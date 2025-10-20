@@ -1,0 +1,238 @@
+# ============================================================================
+# WHEELCHAIR CONTROL SYSTEM - MARK II CONFIGURATION
+# Professional Configuration File
+# ============================================================================
+
+# Application Settings
+application:
+  name: "Face-Controlled Wheelchair System"
+  version: "2.0.0"
+  mode: "development"  # development, production, demo
+  
+# Logging Configuration
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  console_output: true
+  file_output: true
+  log_directory: "logs"
+  max_log_size_mb: 10
+  backup_count: 5
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  date_format: "%Y-%m-%d %H:%M:%S"
+
+# Camera Settings
+camera:
+  source: 0  # Not used for PiCamera, but kept for compatibility
+  resolution:
+    width: 640
+    height: 480
+  fps: 30
+  flip_horizontal: true
+  backend: "picamera"  # cv2, imutils, picamera - CHANGED TO PICAMERA FOR RIBBON CAMERA
+  
+# Face Mesh Settings
+face_mesh:
+  detection_confidence: 0.7
+  tracking_confidence: 0.8
+  process_resolution:
+    width: 683
+    height: 360
+  angle_coefficient: 1.0
+  
+# Face Recognition Settings
+face_recognition:
+  enabled: true
+  low_resolution_mode: true
+  recognition_confidence: 0.5
+  model: "hog"  # hog, cnn
+  user_images_path: "user_images"
+  require_authentication: true
+  
+# Gesture Recognition Settings
+gesture:
+  eyebrow_raise:
+    enabled: true
+    hold_duration_seconds: 2.0
+    calibration_duration: 7
+    threshold_percentage: 70  # Between lowered and raised
+  
+  blink:
+    enabled: false
+    threshold: 0.3
+    
+# Calibration Settings
+calibration:
+  auto_calibrate_on_login: true
+  head_pose:
+    neutral_hold_time: 5
+    calibration_time: 3
+  eyebrow:
+    raise_time: 3
+    lower_time: 1
+  save_per_user: true
+  
+# Control Settings
+control:
+  enable_gesture: "eyebrow_raise"  # eyebrow_raise, blink, voice
+  
+  pitch:  # Head tilt up/down
+    range: [-35, 35]
+    dead_zone: 2  # Degrees
+    smoothing: 0.3  # 0-1, higher = more smoothing
+    
+  yaw:  # Head turn left/right
+    range: [-35, 35]
+    dead_zone: 2
+    smoothing: 0.3
+    
+  speed:
+    max_percent: 20  # Safety limit
+    acceleration_time: 1.0  # Seconds to reach max
+    deceleration_time: 0.5
+    
+  steering:
+    max_angle: 100  # Internal units
+    return_to_center_time: 0.5
+    
+# Arduino Communication Settings
+arduino:
+  auto_detect: true
+  port: null  # null for auto-detect, or specify like "/dev/ttyUSB0"
+  baud_rate: 115200
+  timeout: 0.1
+  reconnect_attempts: 3
+  reconnect_delay: 2
+  
+  # Safety
+  watchdog_timeout_ms: 400  # Stop if no command received
+  heartbeat_interval_ms: 100
+  
+  # Commands
+  stop_command: "S:0,P:0"
+  home_command: "Home"
+  check_command: "CHK"
+  
+# Safety Settings
+safety:
+  emergency_stop_enabled: true
+  max_continuous_runtime_minutes: 120
+  inactivity_timeout_seconds: 300
+  
+  # Sensor validation
+  validate_sensor_data: true
+  max_pitch_change_per_frame: 10
+  max_yaw_change_per_frame: 10
+  
+  # Fail-safes
+  stop_on_face_lost: true
+  face_lost_timeout_seconds: 2
+  stop_on_camera_error: true
+  stop_on_arduino_disconnect: true
+  
+# Performance Settings
+performance:
+  multiprocessing: true
+  process_count: 3  # fr, fm, cm workers
+  frame_skip: 0  # Skip N frames between processing
+  
+  # Resource limits
+  max_memory_mb: 1024
+  max_cpu_percent: 80
+  
+  # Monitoring
+  fps_display: true
+  latency_display: true
+  health_check_interval_seconds: 10
+  
+# User Interface Settings
+ui:
+  window:
+    name: "Wheelchair Control System - MARK II"
+    width: 800
+    height: 450
+    position: [-2, 0]
+    
+  display:
+    show_fps: true
+    show_latency: true
+    show_face_mesh: false
+    show_landmarks: false
+    
+  menu:
+    button_height: 112
+    buttons:
+      - text: "Add User"
+        color: [0, 155, 0]
+        action: "add_user"
+      - text: "Calibrate"
+        color: [60, 60, 60]
+        action: "calibrate"
+      - text: "Home"
+        color: [0, 0, 255]
+        action: "home_steering"
+      - text: "Exit"
+        color: [255, 0, 0]
+        action: "exit"
+        
+  background_image: "resources/atilim_logo_bg.jpg"
+  loading_screen: "resources/atilim_logo_bg.jpg"
+  
+# Security Settings
+security:
+  password_hashing: true
+  hash_algorithm: "sha256"
+  salt_rounds: 12
+  
+  # Passwords (will be hashed on first run)
+  default_password: "1234"
+  master_password: "0000"
+  
+  # Session
+  session_timeout_minutes: 30
+  require_reauth_after_timeout: true
+  
+  # Data protection
+  encrypt_user_data: false  # Future feature
+  backup_user_data: true
+  
+# Data Collection Settings
+telemetry:
+  enabled: true
+  anonymous: true
+  
+  collect:
+    - usage_statistics
+    - performance_metrics
+    - error_logs
+    - calibration_data
+    
+  storage:
+    directory: "logs/telemetry"
+    format: "json"
+    rotation: "daily"
+    
+# Development/Debug Settings
+debug:
+  enabled: false
+  verbose_logging: false
+  save_frames: false
+  frame_save_directory: "logs/debug_frames"
+  profile_performance: false
+  mock_hardware: false  # For testing without hardware
+  
+# Feature Flags
+features:
+  obstacle_detection: false  # Not implemented yet
+  voice_control: false
+  remote_monitoring: false
+  adaptive_learning: false
+  gesture_customization: false
+  multi_camera: false
+  
+# Paths (relative to project root)
+paths:
+  resources: "resources"
+  user_images: "user_images"
+  logs: "logs"
+  config: "config"
+  models: "models"  # Future: for ML models
