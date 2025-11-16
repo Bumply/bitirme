@@ -164,7 +164,6 @@ if [[ "$ARCH" != "aarch64" ]]; then
     echo ""
     print_error "Setup cannot continue. Exiting..."
     exit 1
-fi
 else
     print_info "Attempting MediaPipe installation (may take a few minutes)..."
     echo ""
