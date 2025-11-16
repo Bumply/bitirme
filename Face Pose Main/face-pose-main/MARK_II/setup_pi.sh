@@ -133,11 +133,41 @@ sudo apt install -y \
     libwebp-dev \
     libjpeg-dev
 
-print_info "Installing MediaPipe (using compatible version - this may take a few minutes)..."
-# Use newer version that has pre-built wheels for ARM
-pip3 install --break-system-packages mediapipe --no-cache-dir
+print_info "Detecting Python version..."
+PYTHON_VERSION=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+print_info "Python version: $PYTHON_VERSION"
 
-print_success "MediaPipe installed!"
+print_info "Installing MediaPipe (this may take a few minutes)..."
+# Try to install MediaPipe with version-specific strategies
+if pip3 install --break-system-packages mediapipe --no-cache-dir 2>/dev/null; then
+    print_success "MediaPipe installed successfully!"
+else
+    print_warning "Standard MediaPipe installation failed, trying alternative methods..."
+    
+    # Try with specific compatible versions for different Python versions
+    if [[ "$PYTHON_VERSION" == "3.11" ]]; then
+        print_info "Trying MediaPipe 0.10.9 for Python 3.11..."
+        pip3 install --break-system-packages mediapipe==0.10.9 --no-cache-dir || \
+        pip3 install --break-system-packages mediapipe==0.10.8 --no-cache-dir
+    elif [[ "$PYTHON_VERSION" == "3.9" ]]; then
+        print_info "Trying MediaPipe 0.10.0 for Python 3.9..."
+        pip3 install --break-system-packages mediapipe==0.10.0 --no-cache-dir
+    else
+        print_info "Trying compatible MediaPipe version..."
+        pip3 install --break-system-packages mediapipe==0.10.0 --no-cache-dir || \
+        pip3 install --break-system-packages mediapipe==0.8.11 --no-cache-dir
+    fi
+    
+    # Final check
+    if python3 -c "import mediapipe" 2>/dev/null; then
+        print_success "MediaPipe installed successfully!"
+    else
+        print_warning "MediaPipe installation encountered issues."
+        print_warning "The system will continue, but face mesh features may not work."
+        print_info "You can try manual installation later with:"
+        echo "  pip3 install --break-system-packages mediapipe==0.10.0"
+    fi
+fi
 
 #=============================================================================
 # Install Face Recognition Libraries (Pre-built from System)
@@ -216,7 +246,9 @@ fi
 if python3 -c "import mediapipe; print('  ✓ MediaPipe: Installed')" 2>/dev/null; then
     true
 else
-    print_error "MediaPipe import failed!"
+    print_warning "MediaPipe import failed - face mesh features may not work"
+    print_info "You can try installing manually later with:"
+    echo "    pip3 install --break-system-packages mediapipe==0.10.0"
 fi
 
 if python3 -c "import face_recognition; print('  ✓ Face Recognition: Installed')" 2>/dev/null; then
