@@ -121,9 +121,14 @@ sudo apt install -y \
 print_success "Camera support installed!"
 
 #=============================================================================
-# Install MediaPipe and Machine Learning (Optimized Versions)
+# Install MediaPipe (REQUIRED - System Cannot Run Without It!)
 #=============================================================================
-print_header "Step 5: Installing MediaPipe and ML Libraries"
+print_header "Step 5: Installing MediaPipe (REQUIRED)"
+
+echo ""
+print_error "⚠️  IMPORTANT: MediaPipe is REQUIRED for this system!"
+print_error "    The wheelchair control cannot run without it."
+echo ""
 
 print_info "Installing MediaPipe dependencies from system repos..."
 sudo apt install -y \
@@ -135,37 +140,93 @@ sudo apt install -y \
 
 print_info "Detecting Python version..."
 PYTHON_VERSION=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+ARCH=$(uname -m)
 print_info "Python version: $PYTHON_VERSION"
+print_info "Architecture: $ARCH"
 
-print_info "Installing MediaPipe (this may take a few minutes)..."
-# Try to install MediaPipe with version-specific strategies
-if pip3 install --break-system-packages mediapipe --no-cache-dir 2>/dev/null; then
-    print_success "MediaPipe installed successfully!"
+# Check if 64-bit (MediaPipe requirement)
+if [[ "$ARCH" != "aarch64" ]]; then
+    echo ""
+    print_error "═══════════════════════════════════════════════════════════"
+    print_error "  CRITICAL: MediaPipe requires 64-bit Raspberry Pi OS!"
+    print_error "═══════════════════════════════════════════════════════════"
+    echo ""
+    echo "Detected architecture: $ARCH (32-bit)"
+    echo "Required architecture: aarch64 (64-bit)"
+    echo ""
+    echo "MediaPipe is REQUIRED - the system CANNOT run without it!"
+    echo ""
+    print_info "To fix this:"
+    echo "  1. Download Raspberry Pi OS (64-bit) from:"
+    echo "     https://www.raspberrypi.com/software/operating-systems/"
+    echo "  2. Flash it to your SD card using Raspberry Pi Imager"
+    echo "  3. Re-run this setup script"
+    echo ""
+    print_error "Setup cannot continue. Exiting..."
+    exit 1
+fi
 else
-    print_warning "Standard MediaPipe installation failed, trying alternative methods..."
+    print_info "Attempting MediaPipe installation (may take a few minutes)..."
+    echo ""
     
-    # Try with specific compatible versions for different Python versions
-    if [[ "$PYTHON_VERSION" == "3.11" ]]; then
-        print_info "Trying MediaPipe 0.10.9 for Python 3.11..."
-        pip3 install --break-system-packages mediapipe==0.10.9 --no-cache-dir || \
-        pip3 install --break-system-packages mediapipe==0.10.8 --no-cache-dir
-    elif [[ "$PYTHON_VERSION" == "3.9" ]]; then
-        print_info "Trying MediaPipe 0.10.0 for Python 3.9..."
-        pip3 install --break-system-packages mediapipe==0.10.0 --no-cache-dir
-    else
-        print_info "Trying compatible MediaPipe version..."
-        pip3 install --break-system-packages mediapipe==0.10.0 --no-cache-dir || \
-        pip3 install --break-system-packages mediapipe==0.8.11 --no-cache-dir
-    fi
+    MEDIAPIPE_INSTALLED=false
+    
+    # Try multiple versions in order of preference
+    for version in "" "==0.10.9" "==0.10.8" "==0.10.3" "==0.10.0" "==0.8.11"; do
+        if [ "$MEDIAPIPE_INSTALLED" = false ]; then
+            if [ -z "$version" ]; then
+                print_info "Trying latest MediaPipe..."
+                if pip3 install --break-system-packages mediapipe --no-cache-dir 2>/dev/null; then
+                    MEDIAPIPE_INSTALLED=true
+                    break
+                fi
+            else
+                print_info "Trying MediaPipe$version..."
+                if pip3 install --break-system-packages "mediapipe$version" --no-cache-dir 2>/dev/null; then
+                    MEDIAPIPE_INSTALLED=true
+                    break
+                fi
+            fi
+        fi
+    done
     
     # Final check
     if python3 -c "import mediapipe" 2>/dev/null; then
         print_success "MediaPipe installed successfully!"
+        MEDIAPIPE_INSTALLED=true
     else
-        print_warning "MediaPipe installation encountered issues."
-        print_warning "The system will continue, but face mesh features may not work."
-        print_info "You can try manual installation later with:"
-        echo "  pip3 install --break-system-packages mediapipe==0.10.0"
+        MEDIAPIPE_INSTALLED=false
+    fi
+    
+    if [ "$MEDIAPIPE_INSTALLED" = false ]; then
+        echo ""
+        print_error "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        print_error "  CRITICAL: MediaPipe installation FAILED!"
+        print_error "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        echo "MediaPipe is REQUIRED for face mesh tracking."
+        echo "The wheelchair control system CANNOT run without it!"
+        echo ""
+        print_info "Troubleshooting steps:"
+        echo ""
+        echo "1. Verify you're running 64-bit OS:"
+        echo "   ${GREEN}uname -m${NC}  (must show: aarch64)"
+        echo ""
+        echo "2. Check Python version:"
+        echo "   ${GREEN}python3 --version${NC}  (should be 3.9-3.11)"
+        echo ""
+        echo "3. Update pip and try manual install:"
+        echo "   ${GREEN}python3 -m pip install --upgrade pip${NC}"
+        echo "   ${GREEN}pip3 install --break-system-packages mediapipe==0.10.9${NC}"
+        echo ""
+        echo "4. Check for errors:"
+        echo "   ${GREEN}python3 -c 'import mediapipe as mp; print(mp.__version__)'${NC}"
+        echo ""
+        echo "5. If using Raspberry Pi OS Bookworm, try Bullseye instead"
+        echo "   (Bullseye has better MediaPipe compatibility)"
+        echo ""
+        print_error "Setup CANNOT continue without MediaPipe. Exiting..."
+        exit 1
     fi
 fi
 
@@ -246,9 +307,8 @@ fi
 if python3 -c "import mediapipe; print('  ✓ MediaPipe: Installed')" 2>/dev/null; then
     true
 else
-    print_warning "MediaPipe import failed - face mesh features may not work"
-    print_info "You can try installing manually later with:"
-    echo "    pip3 install --break-system-packages mediapipe==0.10.0"
+    print_error "MediaPipe import failed! System CANNOT run without it!"
+    print_error "Try manual installation: pip3 install --break-system-packages mediapipe==0.10.9"
 fi
 
 if python3 -c "import face_recognition; print('  ✓ Face Recognition: Installed')" 2>/dev/null; then
