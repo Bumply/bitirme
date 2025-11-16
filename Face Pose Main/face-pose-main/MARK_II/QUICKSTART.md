@@ -1,38 +1,112 @@
 # Quick Start Guide - MARK II
 
-## 🚀 Fast Setup (5 Minutes)
+## 🚀 Ultra-Fast Setup (15 Minutes Total!)
 
-### Step 1: Install Dependencies (2 min)
+### Prerequisites
+- Raspberry Pi 4 (2GB+ RAM recommended)
+- Raspberry Pi OS Bullseye or Bookworm
+- Internet connection
+- CSI Camera Module or USB webcam
+- Arduino-based wheelchair controller
+
+---
+
+## 📦 Step 1: One-Click Installation (~10-15 minutes)
+
+Run the optimized setup script that installs everything automatically:
+
 ```bash
-cd /home/pi/face-pose-main/MARK_II
-pip3 install -r requirements.txt
+cd ~/MARK_II
+bash setup_pi.sh
 ```
 
-### Step 2: Configure System (1 min)
-Edit `config/config.yaml`:
+**What it does:**
+- ✅ Updates system packages
+- ✅ Installs pre-compiled OpenCV (no build!)
+- ✅ Installs pre-built Dlib (no compilation!)
+- ✅ Installs MediaPipe with ARM wheels
+- ✅ Configures camera and serial interfaces
+- ✅ Sets up all permissions
+- ✅ Verifies installation
+
+**When prompted, reboot the system:**
+```bash
+sudo reboot
+```
+
+---
+
+## 🎯 Step 2: Add Your Face Images (~2 minutes)
+
+After reboot, add your face images:
+
+```bash
+cd ~/MARK_II
+mkdir -p user_images/YourName
+
+# Copy 2-3 clear photos of your face
+# Name them: 1.jpg, 2.jpg, 3.jpg
+# Tips:
+# - Use good lighting
+# - Face the camera directly
+# - No sunglasses or masks
+# - Different angles/expressions help
+```
+
+**Quick test with picamera:**
+```bash
+libcamera-still -o test_photo.jpg
+mv test_photo.jpg user_images/YourName/1.jpg
+```
+
+---
+
+## ⚙️ Step 3: Configure Settings (~1 minute)
+
+Edit `config/config.yaml` if needed (defaults work for most setups):
 
 ```yaml
-# Minimal required settings
+# Camera settings
 camera:
-  source: 0  # Your camera device (usually 0)
+  source: 0  # 0 for USB camera, "picamera" for CSI module
+  width: 640
+  height: 480
+  fps: 30
 
+# Arduino communication
 arduino:
-  auto_detect: true  # Let system find Arduino automatically
-  # OR specify: port: "/dev/ttyUSB0"
+  auto_detect: true  # Automatically finds Arduino
+  # OR manually specify: port: "/dev/ttyACM0"
 
+# Control settings (start conservative!)
 control:
-  max_speed_percent: 20  # Start with 20% for safety
+  max_speed_percent: 20  # Start at 20% for safety testing
+  calibration_time_sec: 3  # Auto-calibration duration
+
+# Gesture thresholds (fine-tune after testing)
+gestures:
+  pitch_threshold: 15  # Degrees up/down to trigger
+  yaw_threshold: 20    # Degrees left/right to trigger
 ```
 
-### Step 3: Add Your Face (1 min)
-```bash
-mkdir -p user_images/YourName
-# Copy 2-3 clear photos of your face to this folder as 1.jpg, 2.jpg, etc.
-```
+---
 
-### Step 4: Run (1 min)
+## 🎮 Step 4: Run the System (~1 minute)
+
+Connect the Arduino wheelchair controller via USB, then:
+
 ```bash
+cd ~/MARK_II
 python3 src/main.py
+```
+
+**Expected output:**
+```
+[INFO] Starting MARK II Wheelchair Control System...
+[INFO] Camera initialized: 640x480 @ 30 fps
+[INFO] Arduino detected: /dev/ttyACM0
+[INFO] Face recognition ready: 1 user(s) loaded
+[INFO] System ready! Press Ctrl+C to stop
 ```
 
 ---
