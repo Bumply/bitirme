@@ -152,6 +152,18 @@ echo "  Python Path: $(which python3)"
 echo "  Pip Version: $(pip3 --version | cut -d' ' -f2)"
 echo ""
 
+# Detect if pip supports --break-system-packages
+print_info "Checking pip capabilities..."
+PIP_BREAK_SYSTEM=""
+if pip3 install --help 2>&1 | grep -q "break-system-packages"; then
+    print_info "Using --break-system-packages flag"
+    PIP_BREAK_SYSTEM="--break-system-packages"
+else
+    print_warning "Pip doesn't support --break-system-packages (older version)"
+    print_info "Will install using legacy method"
+fi
+echo ""
+
 # Check if 64-bit (MediaPipe requirement)
 if [[ "$ARCH" != "aarch64" ]]; then
     echo ""
@@ -180,11 +192,11 @@ else
     
     # First, ensure pip is up to date
     print_info "Updating pip and build tools..."
-    python3 -m pip install --upgrade pip setuptools wheel --break-system-packages 2>&1 | grep -v "WARNING" | grep -v "already satisfied" || true
+    python3 -m pip install --upgrade pip setuptools wheel $PIP_BREAK_SYSTEM 2>&1 | grep -v "WARNING" | grep -v "already satisfied" || true
     
     # Method 1: Try piwheels first (most reliable for Raspberry Pi)
     print_info "Method 1: Trying piwheels (Raspberry Pi optimized)..."
-    if pip3 install --break-system-packages --index-url https://www.piwheels.org/simple --extra-index-url https://pypi.org/simple mediapipe 2>&1 | tee /tmp/mediapipe_install.log; then
+    if pip3 install $PIP_BREAK_SYSTEM --index-url https://www.piwheels.org/simple --extra-index-url https://pypi.org/simple mediapipe 2>&1 | tee /tmp/mediapipe_install.log; then
         if python3 -c "import mediapipe; print('MediaPipe version:', mediapipe.__version__)" 2>/dev/null; then
             print_success "MediaPipe installed from piwheels!"
             MEDIAPIPE_INSTALLED=true
@@ -208,7 +220,7 @@ else
         
         for version in "${VERSIONS[@]}"; do
             print_info "  Trying MediaPipe$version for Python $PYTHON_VERSION..."
-            if pip3 install --break-system-packages "mediapipe$version" --no-cache-dir 2>&1 | tee -a /tmp/mediapipe_install.log; then
+            if pip3 install $PIP_BREAK_SYSTEM "mediapipe$version" --no-cache-dir 2>&1 | tee -a /tmp/mediapipe_install.log; then
                 if python3 -c "import mediapipe; print('MediaPipe version:', mediapipe.__version__)" 2>/dev/null; then
                     print_success "MediaPipe$version installed!"
                     MEDIAPIPE_INSTALLED=true
@@ -236,7 +248,7 @@ else
             if [ ! -z "$WHEEL_URL" ]; then
                 print_info "  Found wheel: $WHEEL_URL"
                 if wget -q "https://www.piwheels.org$WHEEL_URL" -O mediapipe.whl; then
-                    if pip3 install --break-system-packages mediapipe.whl 2>&1 | tee -a /tmp/mediapipe_install.log; then
+                    if pip3 install $PIP_BREAK_SYSTEM mediapipe.whl 2>&1 | tee -a /tmp/mediapipe_install.log; then
                         if python3 -c "import mediapipe; print('MediaPipe version:', mediapipe.__version__)" 2>/dev/null; then
                             print_success "MediaPipe installed from downloaded wheel!"
                             MEDIAPIPE_INSTALLED=true
@@ -289,14 +301,14 @@ else
             protobuf-compiler
         
         print_info "Installing Python build tools..."
-        pip3 install --break-system-packages --upgrade pip setuptools wheel numpy Cython
+        pip3 install $PIP_BREAK_SYSTEM --upgrade pip setuptools wheel numpy Cython
         
         print_info "Attempting to build MediaPipe from source..."
         print_info "This may take 15-30 minutes depending on your Raspberry Pi model..."
         echo ""
         
         # Try building with verbose output
-        if pip3 install --break-system-packages --no-binary :all: --verbose mediapipe==0.10.9 2>&1 | tee -a /tmp/mediapipe_build.log; then
+        if pip3 install $PIP_BREAK_SYSTEM --no-binary :all: --verbose mediapipe==0.10.9 2>&1 | tee -a /tmp/mediapipe_build.log; then
             if python3 -c "import mediapipe; print('MediaPipe version:', mediapipe.__version__)" 2>/dev/null; then
                 print_success "MediaPipe built from source successfully!"
                 MEDIAPIPE_INSTALLED=true
@@ -306,7 +318,7 @@ else
         # If that fails, try an older version that's easier to build
         if [ "$MEDIAPIPE_INSTALLED" = false ]; then
             print_info "Trying older version (0.8.11) which is easier to build..."
-            if pip3 install --break-system-packages --no-binary :all: --verbose mediapipe==0.8.11 2>&1 | tee -a /tmp/mediapipe_build.log; then
+            if pip3 install $PIP_BREAK_SYSTEM --no-binary :all: --verbose mediapipe==0.8.11 2>&1 | tee -a /tmp/mediapipe_build.log; then
                 if python3 -c "import mediapipe; print('MediaPipe version:', mediapipe.__version__)" 2>/dev/null; then
                     print_success "MediaPipe 0.8.11 built from source successfully!"
                     MEDIAPIPE_INSTALLED=true
@@ -345,7 +357,7 @@ else
         echo "   ${GREEN}python3 --version${NC}"
         echo ""
         echo "7. Try manual installation from piwheels:"
-        echo "   ${GREEN}pip3 install --break-system-packages --index-url https://www.piwheels.org/simple mediapipe${NC}"
+        echo "   ${GREEN}pip3 install $PIP_BREAK_SYSTEM --index-url https://www.piwheels.org/simple mediapipe${NC}"
         echo ""
         echo "8. Check free disk space (need at least 3GB for building):"
         echo "   ${GREEN}df -h${NC}"
@@ -369,8 +381,8 @@ sudo apt install -y \
     libdlib-dev
 
 print_info "Installing face_recognition library..."
-pip3 install --break-system-packages face-recognition --no-deps
-pip3 install --break-system-packages Pillow Click
+pip3 install $PIP_BREAK_SYSTEM face-recognition --no-deps
+pip3 install $PIP_BREAK_SYSTEM Pillow Click
 
 print_success "Face recognition installed!"
 
@@ -380,7 +392,7 @@ print_success "Face recognition installed!"
 print_header "Step 7: Installing Additional Dependencies"
 
 print_info "Installing remaining Python packages..."
-pip3 install --break-system-packages \
+pip3 install $PIP_BREAK_SYSTEM \
     pyserial \
     PyYAML \
     imutils
@@ -436,7 +448,7 @@ if python3 -c "import mediapipe; print('  ✓ MediaPipe: Installed')" 2>/dev/nul
     true
 else
     print_error "MediaPipe import failed! System CANNOT run without it!"
-    print_error "Try manual installation: pip3 install --break-system-packages mediapipe==0.10.9"
+    print_error "Try manual installation: pip3 install $PIP_BREAK_SYSTEM mediapipe==0.10.9"
 fi
 
 if python3 -c "import face_recognition; print('  ✓ Face Recognition: Installed')" 2>/dev/null; then
