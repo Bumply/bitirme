@@ -371,17 +371,35 @@ else
 fi
 
 #=============================================================================
-# Install Face Recognition Libraries (Pre-built from System)
+# Install Face Recognition Libraries
 #=============================================================================
 print_header "Step 6: Installing Face Recognition"
 
-print_info "Installing dlib from system repositories (NO compilation needed!)..."
+print_info "Installing dlib dependencies..."
 sudo apt install -y \
-    python3-dlib \
-    libdlib-dev
+    libopenblas-dev \
+    liblapack-dev \
+    libjpeg-dev \
+    cmake \
+    build-essential
+
+print_info "Installing dlib from piwheels (pre-built for Raspberry Pi)..."
+if pip3 install $PIP_BREAK_SYSTEM --index-url https://www.piwheels.org/simple --extra-index-url https://pypi.org/simple dlib 2>&1 | tee /tmp/dlib_install.log; then
+    if python3 -c "import dlib; print('  ✓ dlib installed:', dlib.__version__)" 2>/dev/null; then
+        print_success "dlib installed successfully!"
+    else
+        print_error "dlib installation failed to import"
+        print_info "Check log: cat /tmp/dlib_install.log"
+        exit 1
+    fi
+else
+    print_error "dlib installation failed"
+    print_info "Check log: cat /tmp/dlib_install.log"
+    exit 1
+fi
 
 print_info "Installing face_recognition library..."
-pip3 install $PIP_BREAK_SYSTEM face-recognition --no-deps
+pip3 install $PIP_BREAK_SYSTEM face-recognition
 pip3 install $PIP_BREAK_SYSTEM Pillow Click
 
 print_success "Face recognition installed!"
