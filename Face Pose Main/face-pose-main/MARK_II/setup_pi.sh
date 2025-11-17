@@ -250,6 +250,71 @@ else
         rm -rf "$TEMP_DIR"
     fi
     
+    # Method 4: Build from source (comprehensive build with all dependencies)
+    if [ "$MEDIAPIPE_INSTALLED" = false ]; then
+        echo ""
+        print_warning "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        print_warning "  All pre-built wheels failed. Attempting source build..."
+        print_warning "  This will take 15-30 minutes. Please be patient!"
+        print_warning "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        
+        print_info "Installing build dependencies..."
+        sudo apt install -y \
+            build-essential \
+            cmake \
+            git \
+            pkg-config \
+            libopencv-dev \
+            libavcodec-dev \
+            libavformat-dev \
+            libswscale-dev \
+            libv4l-dev \
+            libxvidcore-dev \
+            libx264-dev \
+            libgtk-3-dev \
+            libatlas-base-dev \
+            gfortran \
+            python3-dev \
+            libjpeg-dev \
+            libpng-dev \
+            libtiff-dev \
+            libgstreamer1.0-dev \
+            libgstreamer-plugins-base1.0-dev \
+            libdc1394-dev \
+            libavresample-dev \
+            libgoogle-glog-dev \
+            libgflags-dev \
+            libprotobuf-dev \
+            protobuf-compiler
+        
+        print_info "Installing Python build tools..."
+        pip3 install --break-system-packages --upgrade pip setuptools wheel numpy Cython
+        
+        print_info "Attempting to build MediaPipe from source..."
+        print_info "This may take 15-30 minutes depending on your Raspberry Pi model..."
+        echo ""
+        
+        # Try building with verbose output
+        if pip3 install --break-system-packages --no-binary :all: --verbose mediapipe==0.10.9 2>&1 | tee -a /tmp/mediapipe_build.log; then
+            if python3 -c "import mediapipe; print('MediaPipe version:', mediapipe.__version__)" 2>/dev/null; then
+                print_success "MediaPipe built from source successfully!"
+                MEDIAPIPE_INSTALLED=true
+            fi
+        fi
+        
+        # If that fails, try an older version that's easier to build
+        if [ "$MEDIAPIPE_INSTALLED" = false ]; then
+            print_info "Trying older version (0.8.11) which is easier to build..."
+            if pip3 install --break-system-packages --no-binary :all: --verbose mediapipe==0.8.11 2>&1 | tee -a /tmp/mediapipe_build.log; then
+                if python3 -c "import mediapipe; print('MediaPipe version:', mediapipe.__version__)" 2>/dev/null; then
+                    print_success "MediaPipe 0.8.11 built from source successfully!"
+                    MEDIAPIPE_INSTALLED=true
+                fi
+            fi
+        fi
+    fi
+    
     # Final check
     if python3 -c "import mediapipe" 2>/dev/null; then
         print_success "MediaPipe installed successfully!"
@@ -269,24 +334,24 @@ else
         echo ""
         print_info "Troubleshooting steps:"
         echo ""
-        echo "1. Check installation log for specific errors:"
+        echo "4. Check installation logs for specific errors:"
         echo "   ${GREEN}cat /tmp/mediapipe_install.log${NC}"
+        echo "   ${GREEN}cat /tmp/mediapipe_build.log${NC}  (if build was attempted)"
         echo ""
-        echo "2. Verify you're running 64-bit OS:"
+        echo "5. Verify you're running 64-bit OS:"
         echo "   ${GREEN}uname -m${NC}  (must show: aarch64)"
         echo ""
-        echo "3. Check Python version (3.9-3.11 recommended):"
+        echo "6. Check Python version (3.9-3.11 recommended):"
         echo "   ${GREEN}python3 --version${NC}"
         echo ""
-        echo "4. Try manual installation from piwheels:"
-        echo "   ${GREEN}pip3 install --break-system-packages --index-url=https://www.piwheels.org/simple mediapipe${NC}"
+        echo "7. Try manual installation from piwheels:"
+        echo "   ${GREEN}pip3 install --break-system-packages --index-url https://www.piwheels.org/simple mediapipe${NC}"
         echo ""
-        echo "5. Alternative: Install opencv-contrib-python instead (experimental):"
-        echo "   ${GREEN}pip3 install --break-system-packages opencv-contrib-python${NC}"
-        echo "   ${YELLOW}Then modify the code to use OpenCV face detection${NC}"
-        echo ""
-        echo "6. Check free disk space (need at least 2GB):"
+        echo "8. Check free disk space (need at least 3GB for building):"
         echo "   ${GREEN}df -h${NC}"
+        echo ""
+        echo "9. Check build log for compilation errors:"
+        echo "   ${GREEN}tail -100 /tmp/mediapipe_build.log${NC}"
         echo ""
         print_error "Setup CANNOT continue without MediaPipe. Exiting..."
         exit 1
