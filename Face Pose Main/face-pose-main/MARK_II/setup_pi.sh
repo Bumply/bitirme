@@ -144,6 +144,14 @@ ARCH=$(uname -m)
 print_info "Python version: $PYTHON_VERSION"
 print_info "Architecture: $ARCH"
 
+# Show detailed system info for debugging
+echo ""
+print_info "System Details:"
+echo "  OS Version: $(cat /etc/os-release | grep PRETTY_NAME | cut -d'"' -f2)"
+echo "  Python Path: $(which python3)"
+echo "  Pip Version: $(pip3 --version | cut -d' ' -f2)"
+echo ""
+
 # Check if 64-bit (MediaPipe requirement)
 if [[ "$ARCH" != "aarch64" ]]; then
     echo ""
@@ -171,49 +179,75 @@ else
     MEDIAPIPE_INSTALLED=false
     
     # First, ensure pip is up to date
-    print_info "Updating pip..."
-    python3 -m pip install --upgrade pip setuptools wheel --break-system-packages 2>&1 | grep -v "WARNING"
+    print_info "Updating pip and build tools..."
+    python3 -m pip install --upgrade pip setuptools wheel --break-system-packages 2>&1 | grep -v "WARNING" | grep -v "already satisfied" || true
     
-    # Method 1: Try installing from piwheels (Raspberry Pi optimized repository)
-    print_info "Method 1: Trying piwheels repository (Raspberry Pi optimized)..."
-    if pip3 install --break-system-packages --index-url=https://www.piwheels.org/simple mediapipe 2>&1 | tee /tmp/mediapipe_install.log | grep -v "WARNING"; then
-        if python3 -c "import mediapipe" 2>/dev/null; then
+    # Method 1: Try piwheels first (most reliable for Raspberry Pi)
+    print_info "Method 1: Trying piwheels (Raspberry Pi optimized)..."
+    if pip3 install --break-system-packages --index-url https://www.piwheels.org/simple --extra-index-url https://pypi.org/simple mediapipe 2>&1 | tee /tmp/mediapipe_install.log; then
+        if python3 -c "import mediapipe; print('MediaPipe version:', mediapipe.__version__)" 2>/dev/null; then
             print_success "MediaPipe installed from piwheels!"
             MEDIAPIPE_INSTALLED=true
         fi
     fi
     
-    # Method 2: Try specific versions from PyPI
+    # Method 2: Try specific Python version compatible wheels
     if [ "$MEDIAPIPE_INSTALLED" = false ]; then
-        print_info "Method 2: Trying specific versions from PyPI..."
-        for version in "==0.10.9" "==0.10.8" "==0.10.3" "==0.10.0"; do
-            print_info "  Trying MediaPipe$version..."
-            if pip3 install --break-system-packages "mediapipe$version" --no-cache-dir 2>&1 | tee -a /tmp/mediapipe_install.log | grep -v "WARNING"; then
-                if python3 -c "import mediapipe" 2>/dev/null; then
+        print_info "Method 2: Trying version-specific wheels for Python $PYTHON_VERSION..."
+        
+        # Map Python versions to compatible MediaPipe versions
+        if [ "$PYTHON_VERSION" = "3.9" ]; then
+            VERSIONS=("==0.10.9" "==0.10.8" "==0.10.3" "==0.10.0" "==0.8.11")
+        elif [ "$PYTHON_VERSION" = "3.10" ]; then
+            VERSIONS=("==0.10.9" "==0.10.8" "==0.10.3")
+        elif [ "$PYTHON_VERSION" = "3.11" ]; then
+            VERSIONS=("==0.10.9" "==0.10.8")
+        else
+            VERSIONS=("==0.10.9" "==0.10.8" "==0.10.3" "==0.10.0")
+        fi
+        
+        for version in "${VERSIONS[@]}"; do
+            print_info "  Trying MediaPipe$version for Python $PYTHON_VERSION..."
+            if pip3 install --break-system-packages "mediapipe$version" --no-cache-dir 2>&1 | tee -a /tmp/mediapipe_install.log; then
+                if python3 -c "import mediapipe; print('MediaPipe version:', mediapipe.__version__)" 2>/dev/null; then
                     print_success "MediaPipe$version installed!"
                     MEDIAPIPE_INSTALLED=true
                     break
                 fi
             fi
-            sleep 1
+            sleep 2
         done
     fi
     
-    # Method 3: Try building from source (last resort)
+    # Method 3: Try downloading pre-built wheel directly
     if [ "$MEDIAPIPE_INSTALLED" = false ]; then
-        print_info "Method 3: Trying to build from source (this may take 10-15 minutes)..."
-        print_warning "Building MediaPipe from source - please be patient..."
+        print_info "Method 3: Trying direct wheel download..."
         
-        # Install build dependencies
-        sudo apt install -y build-essential cmake git
+        # Create temp directory
+        TEMP_DIR=$(mktemp -d)
+        cd "$TEMP_DIR"
         
-        # Try installing with --no-binary to force source build
-        if pip3 install --break-system-packages --no-binary mediapipe mediapipe==0.10.9 2>&1 | tee -a /tmp/mediapipe_install.log; then
-            if python3 -c "import mediapipe" 2>/dev/null; then
-                print_success "MediaPipe built from source successfully!"
-                MEDIAPIPE_INSTALLED=true
+        # Try downloading from piwheels directly
+        print_info "  Downloading from piwheels..."
+        if wget -q https://www.piwheels.org/simple/mediapipe/ -O mediapipe_index.html; then
+            # Parse the latest wheel for our architecture and Python version
+            WHEEL_URL=$(grep -o 'href="[^"]*cp'$PYTHON_VERSION'.*aarch64[^"]*\.whl"' mediapipe_index.html | head -1 | sed 's/href="//;s/"//')
+            
+            if [ ! -z "$WHEEL_URL" ]; then
+                print_info "  Found wheel: $WHEEL_URL"
+                if wget -q "https://www.piwheels.org$WHEEL_URL" -O mediapipe.whl; then
+                    if pip3 install --break-system-packages mediapipe.whl 2>&1 | tee -a /tmp/mediapipe_install.log; then
+                        if python3 -c "import mediapipe; print('MediaPipe version:', mediapipe.__version__)" 2>/dev/null; then
+                            print_success "MediaPipe installed from downloaded wheel!"
+                            MEDIAPIPE_INSTALLED=true
+                        fi
+                    fi
+                fi
             fi
         fi
+        
+        cd - > /dev/null
+        rm -rf "$TEMP_DIR"
     fi
     
     # Final check
