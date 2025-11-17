@@ -165,29 +165,56 @@ if [[ "$ARCH" != "aarch64" ]]; then
     print_error "Setup cannot continue. Exiting..."
     exit 1
 else
-    print_info "Attempting MediaPipe installation (may take a few minutes)..."
+    print_info "Installing MediaPipe for ARM64..."
     echo ""
     
     MEDIAPIPE_INSTALLED=false
     
-    # Try multiple versions in order of preference
-    for version in "" "==0.10.9" "==0.10.8" "==0.10.3" "==0.10.0" "==0.8.11"; do
-        if [ "$MEDIAPIPE_INSTALLED" = false ]; then
-            if [ -z "$version" ]; then
-                print_info "Trying latest MediaPipe..."
-                if pip3 install --break-system-packages mediapipe --no-cache-dir 2>/dev/null; then
-                    MEDIAPIPE_INSTALLED=true
-                    break
-                fi
-            else
-                print_info "Trying MediaPipe$version..."
-                if pip3 install --break-system-packages "mediapipe$version" --no-cache-dir 2>/dev/null; then
+    # First, ensure pip is up to date
+    print_info "Updating pip..."
+    python3 -m pip install --upgrade pip setuptools wheel --break-system-packages 2>&1 | grep -v "WARNING"
+    
+    # Method 1: Try installing from piwheels (Raspberry Pi optimized repository)
+    print_info "Method 1: Trying piwheels repository (Raspberry Pi optimized)..."
+    if pip3 install --break-system-packages --index-url=https://www.piwheels.org/simple mediapipe 2>&1 | tee /tmp/mediapipe_install.log | grep -v "WARNING"; then
+        if python3 -c "import mediapipe" 2>/dev/null; then
+            print_success "MediaPipe installed from piwheels!"
+            MEDIAPIPE_INSTALLED=true
+        fi
+    fi
+    
+    # Method 2: Try specific versions from PyPI
+    if [ "$MEDIAPIPE_INSTALLED" = false ]; then
+        print_info "Method 2: Trying specific versions from PyPI..."
+        for version in "==0.10.9" "==0.10.8" "==0.10.3" "==0.10.0"; do
+            print_info "  Trying MediaPipe$version..."
+            if pip3 install --break-system-packages "mediapipe$version" --no-cache-dir 2>&1 | tee -a /tmp/mediapipe_install.log | grep -v "WARNING"; then
+                if python3 -c "import mediapipe" 2>/dev/null; then
+                    print_success "MediaPipe$version installed!"
                     MEDIAPIPE_INSTALLED=true
                     break
                 fi
             fi
+            sleep 1
+        done
+    fi
+    
+    # Method 3: Try building from source (last resort)
+    if [ "$MEDIAPIPE_INSTALLED" = false ]; then
+        print_info "Method 3: Trying to build from source (this may take 10-15 minutes)..."
+        print_warning "Building MediaPipe from source - please be patient..."
+        
+        # Install build dependencies
+        sudo apt install -y build-essential cmake git
+        
+        # Try installing with --no-binary to force source build
+        if pip3 install --break-system-packages --no-binary mediapipe mediapipe==0.10.9 2>&1 | tee -a /tmp/mediapipe_install.log; then
+            if python3 -c "import mediapipe" 2>/dev/null; then
+                print_success "MediaPipe built from source successfully!"
+                MEDIAPIPE_INSTALLED=true
+            fi
         fi
-    done
+    fi
     
     # Final check
     if python3 -c "import mediapipe" 2>/dev/null; then
@@ -208,21 +235,24 @@ else
         echo ""
         print_info "Troubleshooting steps:"
         echo ""
-        echo "1. Verify you're running 64-bit OS:"
+        echo "1. Check installation log for specific errors:"
+        echo "   ${GREEN}cat /tmp/mediapipe_install.log${NC}"
+        echo ""
+        echo "2. Verify you're running 64-bit OS:"
         echo "   ${GREEN}uname -m${NC}  (must show: aarch64)"
         echo ""
-        echo "2. Check Python version:"
-        echo "   ${GREEN}python3 --version${NC}  (should be 3.9-3.11)"
+        echo "3. Check Python version (3.9-3.11 recommended):"
+        echo "   ${GREEN}python3 --version${NC}"
         echo ""
-        echo "3. Update pip and try manual install:"
-        echo "   ${GREEN}python3 -m pip install --upgrade pip${NC}"
-        echo "   ${GREEN}pip3 install --break-system-packages mediapipe==0.10.9${NC}"
+        echo "4. Try manual installation from piwheels:"
+        echo "   ${GREEN}pip3 install --break-system-packages --index-url=https://www.piwheels.org/simple mediapipe${NC}"
         echo ""
-        echo "4. Check for errors:"
-        echo "   ${GREEN}python3 -c 'import mediapipe as mp; print(mp.__version__)'${NC}"
+        echo "5. Alternative: Install opencv-contrib-python instead (experimental):"
+        echo "   ${GREEN}pip3 install --break-system-packages opencv-contrib-python${NC}"
+        echo "   ${YELLOW}Then modify the code to use OpenCV face detection${NC}"
         echo ""
-        echo "5. If using Raspberry Pi OS Bookworm, try Bullseye instead"
-        echo "   (Bullseye has better MediaPipe compatibility)"
+        echo "6. Check free disk space (need at least 2GB):"
+        echo "   ${GREEN}df -h${NC}"
         echo ""
         print_error "Setup CANNOT continue without MediaPipe. Exiting..."
         exit 1
