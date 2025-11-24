@@ -386,7 +386,7 @@ class WheelchairController:
             # Main loop
             while not self.shutdown_event.is_set():
                 # Capture frame
-                frame = self.capture.read()
+                frame = self.capture.getFrame()
                 
                 if frame is None:
                     self.logger.warning("Failed to capture frame")
