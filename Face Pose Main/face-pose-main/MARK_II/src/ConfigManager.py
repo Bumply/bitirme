@@ -194,6 +194,11 @@ class Config:
         """Get entire configuration as dictionary"""
         return copy.deepcopy(self._config)
     
+    @property
+    def data(self) -> Dict:
+        """Get entire configuration (alias for get_all)"""
+        return self.get_all()
+    
     def __getitem__(self, key: str) -> Any:
         """Allow dictionary-style access"""
         return self.get(key)
