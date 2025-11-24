@@ -263,6 +263,7 @@ class WheelchairController:
         """Initialize wheelchair controller"""
         # Load configuration
         self.config = Config()
+        self.config.load()  # Load the config file
         self.logger = get_logger(__name__)
         
         self.logger.info("=" * 80)
