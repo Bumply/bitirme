@@ -94,6 +94,10 @@ class WheelchairLogger:
         if name in self.loggers:
             return self.loggers[name]
         
+        # Initialize config if not set
+        if self.config is None:
+            self.config = {}
+        
         logger = logging.getLogger(name)
         logger.setLevel(getattr(logging, self.config.get('level', 'INFO')))
         logger.propagate = False
