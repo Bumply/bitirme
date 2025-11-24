@@ -264,6 +264,12 @@ class WheelchairController:
         # Load configuration
         self.config = Config()
         self.config.load()  # Load the config file
+        
+        # Setup logging system with config
+        from Logger import setup_logging
+        setup_logging(self.config.data)
+        
+        # Now we can get logger
         self.logger = get_logger(__name__)
         
         self.logger.info("=" * 80)
