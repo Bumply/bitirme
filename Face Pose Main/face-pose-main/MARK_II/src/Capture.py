@@ -107,10 +107,25 @@ class Capture:
                 try:
                     from picamera2 import Picamera2
                     self.cap = Picamera2()
+                    
+                    # Configure camera with proper settings
+                    config = self.cap.create_preview_configuration(
+                        main={"size": (self.width, self.height), "format": "RGB888"}
+                    )
+                    self.cap.configure(config)
+                    
+                    # Start the camera
                     self.cap.start()
-                    self.logger.info("Pi Camera initialized")
+                    time.sleep(2)  # Give camera time to warm up
+                    
+                    self.logger.info(f"Pi Camera initialized: {self.width}x{self.height}")
                 except ImportError:
                     self.logger.error("picamera2 not available, falling back to CV2")
+                    self.source = CaptureSource.CV2
+                    self._initialize_camera()
+                    return
+                except Exception as e:
+                    self.logger.error(f"picamera2 initialization failed: {e}, falling back to CV2")
                     self.source = CaptureSource.CV2
                     self._initialize_camera()
                     return
