@@ -239,10 +239,11 @@ class Capture:
             self.logger.debug(f"Frame has invalid shape: {frame.shape}")
             return False
         
-        # Check if frame is not all black (could indicate camera issue)
-        if np.mean(frame) < 5:
-            self.logger.debug("Frame appears to be all black")
-            return False
+        # NOTE: Disabled black frame check - PiCamera can return dark frames during warmup
+        # and this was causing false validation failures
+        # if np.mean(frame) < 5:
+        #     self.logger.debug("Frame appears to be all black")
+        #     return False
         
         return True
     

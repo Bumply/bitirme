@@ -22,11 +22,18 @@ from Logger import get_logger
 
 # Global shutdown flag
 shutdown_event = None
+shutdown_triggered = False
 
 
 def signal_handler(signum, frame):
     """Handle shutdown signals gracefully"""
-    global shutdown_event
+    global shutdown_event, shutdown_triggered
+    
+    # Only handle once
+    if shutdown_triggered:
+        return
+    shutdown_triggered = True
+    
     logger = get_logger(__name__)
     logger.info(f"Received signal {signum}, initiating shutdown...")
     
@@ -366,7 +373,8 @@ class WheelchairController:
                     self.shutdown_event,
                     self.config.data
                 ),
-                name="FaceRecognitionWorker"
+                name="FaceRecognitionWorker",
+                daemon=True  # Will be killed when main process exits
             )
             fr_worker.start()
             self.workers.append(fr_worker)
@@ -381,7 +389,8 @@ class WheelchairController:
                     self.shutdown_event,
                     self.config.data
                 ),
-                name="FaceMeshWorker"
+                name="FaceMeshWorker",
+                daemon=True  # Will be killed when main process exits
             )
             fm_worker.start()
             self.workers.append(fm_worker)
@@ -395,7 +404,8 @@ class WheelchairController:
                     self.shutdown_event,
                     self.config.data
                 ),
-                name="CommunicationWorker"
+                name="CommunicationWorker",
+                daemon=True  # Will be killed when main process exits
             )
             cm_worker.start()
             self.workers.append(cm_worker)
@@ -595,18 +605,31 @@ class WheelchairController:
         # Set shutdown event
         self.shutdown_event.set()
         
-        # Stop all workers
-        self.logger.info("Stopping workers...")
+        # Give workers a moment to see shutdown event
+        time.sleep(0.5)
+        
+        # Force terminate all workers immediately
+        self.logger.info("Terminating workers...")
         for worker in self.workers:
-            worker.join(timeout=5)
             if worker.is_alive():
-                self.logger.warning(f"Worker {worker.name} did not stop, terminating...")
+                self.logger.info(f"Terminating {worker.name}...")
                 worker.terminate()
-                worker.join(timeout=2)
+        
+        # Wait briefly for termination
+        time.sleep(0.5)
+        
+        # Kill any remaining workers
+        for worker in self.workers:
+            if worker.is_alive():
+                self.logger.warning(f"Force killing {worker.name}...")
+                worker.kill()
         
         # Cleanup camera
         self.logger.info("Releasing camera...")
-        self.capture.release()
+        try:
+            self.capture.release()
+        except Exception as e:
+            self.logger.error(f"Error releasing camera: {e}")
         
         # Close windows
         cv2.destroyAllWindows()
