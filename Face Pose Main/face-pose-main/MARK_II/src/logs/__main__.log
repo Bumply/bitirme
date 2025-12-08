@@ -403,3 +403,101 @@ Capture.CaptureError: Failed to initialize camera: Failed to open camera with CV
 2025-12-08 15:59:55 - __main__ - [32mINFO[0m - Received signal 2, initiating shutdown...
 2025-12-08 15:59:55 - __main__ - [32mINFO[0m - Received signal 2, initiating shutdown...
 2025-12-08 15:59:55 - __main__ - [32mINFO[0m - Received signal 2, initiating shutdown...
+2025-12-08 16:08:10 - __main__ - [32mINFO[0m - ================================================================================
+2025-12-08 16:08:10 - __main__ - [32mINFO[0m - Face-Controlled Wheelchair System MARK II
+2025-12-08 16:08:10 - __main__ - [32mINFO[0m - ================================================================================
+2025-12-08 16:08:10 - __main__ - [32mINFO[0m - Initializing camera...
+2025-12-08 16:08:10 - __main__ - [32mINFO[0m - Initializing camera (device 0, PICAMERA)
+2025-12-08 16:08:10 - __main__ - [31mERROR[0m - picamera2 initialization failed: Failed to configure camera: Device or resource busy, falling back to CV2
+2025-12-08 16:08:10 - __main__ - [32mINFO[0m - Initializing camera (device 0, CV2)
+2025-12-08 16:08:10 - __main__ - [31mERROR[0m - Camera initialization failed: Failed to open camera with CV2
+Traceback (most recent call last):
+  File "/home/pi/bitirme/Face Pose Main/face-pose-main/MARK_II/src/Capture.py", line 115, in _initialize_camera
+    self.cap.configure(config)
+  File "/usr/lib/python3/dist-packages/picamera2/picamera2.py", line 1004, in configure
+    self.configure_(camera_config)
+  File "/usr/lib/python3/dist-packages/picamera2/picamera2.py", line 943, in configure_
+    if self.camera.configure(libcamera_config):
+RuntimeError: Failed to configure camera: Device or resource busy
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/pi/bitirme/Face Pose Main/face-pose-main/MARK_II/src/Capture.py", line 87, in _initialize_camera
+    raise CaptureError("Failed to open camera with CV2")
+Capture.CaptureError: Failed to open camera with CV2
+2025-12-08 16:08:10 - __main__ - [31mERROR[0m - Camera initialization failed: Failed to initialize camera: Failed to open camera with CV2
+Traceback (most recent call last):
+  File "/home/pi/bitirme/Face Pose Main/face-pose-main/MARK_II/src/Capture.py", line 115, in _initialize_camera
+    self.cap.configure(config)
+  File "/usr/lib/python3/dist-packages/picamera2/picamera2.py", line 1004, in configure
+    self.configure_(camera_config)
+  File "/usr/lib/python3/dist-packages/picamera2/picamera2.py", line 943, in configure_
+    if self.camera.configure(libcamera_config):
+RuntimeError: Failed to configure camera: Device or resource busy
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/pi/bitirme/Face Pose Main/face-pose-main/MARK_II/src/Capture.py", line 87, in _initialize_camera
+    raise CaptureError("Failed to open camera with CV2")
+Capture.CaptureError: Failed to open camera with CV2
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/pi/bitirme/Face Pose Main/face-pose-main/MARK_II/src/Capture.py", line 130, in _initialize_camera
+    self._initialize_camera()
+  File "/home/pi/bitirme/Face Pose Main/face-pose-main/MARK_II/src/Capture.py", line 140, in _initialize_camera
+    raise CaptureError(f"Failed to initialize camera: {e}")
+Capture.CaptureError: Failed to initialize camera: Failed to open camera with CV2
+2025-12-08 16:08:10 - __main__ - [32mINFO[0m - Camera released
+2025-12-08 16:08:46 - __main__ - [32mINFO[0m - ================================================================================
+2025-12-08 16:08:46 - __main__ - [32mINFO[0m - Face-Controlled Wheelchair System MARK II
+2025-12-08 16:08:46 - __main__ - [32mINFO[0m - ================================================================================
+2025-12-08 16:08:46 - __main__ - [32mINFO[0m - Initializing camera...
+2025-12-08 16:08:46 - __main__ - [32mINFO[0m - Initializing camera (device 0, PICAMERA)
+2025-12-08 16:08:47 - __main__ - [31mERROR[0m - picamera2 initialization failed: Failed to configure camera: Device or resource busy, falling back to CV2
+2025-12-08 16:08:47 - __main__ - [32mINFO[0m - Initializing camera (device 0, CV2)
+2025-12-08 16:08:47 - __main__ - [31mERROR[0m - Camera initialization failed: Failed to open camera with CV2
+Traceback (most recent call last):
+  File "/home/pi/bitirme/Face Pose Main/face-pose-main/MARK_II/src/Capture.py", line 115, in _initialize_camera
+    self.cap.configure(config)
+  File "/usr/lib/python3/dist-packages/picamera2/picamera2.py", line 1004, in configure
+    self.configure_(camera_config)
+  File "/usr/lib/python3/dist-packages/picamera2/picamera2.py", line 943, in configure_
+    if self.camera.configure(libcamera_config):
+RuntimeError: Failed to configure camera: Device or resource busy
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/pi/bitirme/Face Pose Main/face-pose-main/MARK_II/src/Capture.py", line 87, in _initialize_camera
+    raise CaptureError("Failed to open camera with CV2")
+Capture.CaptureError: Failed to open camera with CV2
+2025-12-08 16:08:47 - __main__ - [31mERROR[0m - Camera initialization failed: Failed to initialize camera: Failed to open camera with CV2
+Traceback (most recent call last):
+  File "/home/pi/bitirme/Face Pose Main/face-pose-main/MARK_II/src/Capture.py", line 115, in _initialize_camera
+    self.cap.configure(config)
+  File "/usr/lib/python3/dist-packages/picamera2/picamera2.py", line 1004, in configure
+    self.configure_(camera_config)
+  File "/usr/lib/python3/dist-packages/picamera2/picamera2.py", line 943, in configure_
+    if self.camera.configure(libcamera_config):
+RuntimeError: Failed to configure camera: Device or resource busy
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/pi/bitirme/Face Pose Main/face-pose-main/MARK_II/src/Capture.py", line 87, in _initialize_camera
+    raise CaptureError("Failed to open camera with CV2")
+Capture.CaptureError: Failed to open camera with CV2
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/pi/bitirme/Face Pose Main/face-pose-main/MARK_II/src/Capture.py", line 130, in _initialize_camera
+    self._initialize_camera()
+  File "/home/pi/bitirme/Face Pose Main/face-pose-main/MARK_II/src/Capture.py", line 140, in _initialize_camera
+    raise CaptureError(f"Failed to initialize camera: {e}")
+Capture.CaptureError: Failed to initialize camera: Failed to open camera with CV2
+2025-12-08 16:08:47 - __main__ - [32mINFO[0m - Camera released
