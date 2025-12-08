@@ -1,0 +1,11 @@
+2025-12-08 14:49:10 - FaceRecognitionWorker - [32mINFO[0m - Face Recognition Worker started
+2025-12-08 14:49:10 - FaceRecognitionWorker - [32mINFO[0m - Face Recognizer initialized (model: hog, confidence: 0.5)
+2025-12-08 14:49:10 - FaceRecognitionWorker - [32mINFO[0m - Starting face recognition training...
+2025-12-08 14:49:10 - FaceRecognitionWorker - [33mWARNING[0m - User images directory not found: user_images
+2025-12-08 14:49:10 - FaceRecognitionWorker - [32mINFO[0m - Created user images directory: user_images
+2025-12-08 14:56:46 - FaceRecognitionWorker - [32mINFO[0m - Face Recognition Worker shutting down...
+2025-12-08 14:56:46 - FaceRecognitionWorker - [32mINFO[0m - Face Recognition Worker terminated
+2025-12-08 14:58:09 - FaceRecognitionWorker - [32mINFO[0m - Face Recognition Worker started
+2025-12-08 14:58:09 - FaceRecognitionWorker - [32mINFO[0m - Face Recognizer initialized (model: hog, confidence: 0.5)
+2025-12-08 14:58:09 - FaceRecognitionWorker - [32mINFO[0m - Starting face recognition training...
+2025-12-08 14:58:09 - FaceRecognitionWorker - [33mWARNING[0m - No user directories found for training
