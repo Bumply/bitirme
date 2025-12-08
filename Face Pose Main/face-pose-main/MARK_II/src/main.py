@@ -18,16 +18,22 @@ from FaceRecognizer import FaceRecognizer
 from CommManager import CommManager
 from ConfigManager import Config
 from Logger import get_logger
+import os
 
 
 # Global shutdown flag
 shutdown_event = None
 shutdown_triggered = False
+main_process_pid = os.getpid()
 
 
 def signal_handler(signum, frame):
-    """Handle shutdown signals gracefully"""
+    """Handle shutdown signals gracefully - only in main process"""
     global shutdown_event, shutdown_triggered
+    
+    # Only handle in main process
+    if os.getpid() != main_process_pid:
+        return
     
     # Only handle once
     if shutdown_triggered:
@@ -56,6 +62,10 @@ def face_recognition_worker(
         shutdown: Event to signal shutdown
         config_dict: Configuration dictionary
     """
+    # Ignore signals in worker processes - let main process handle them
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+    
     logger = get_logger('FaceRecognitionWorker')
     logger.info("Face Recognition Worker started")
     
@@ -126,6 +136,10 @@ def face_mesh_worker(
         shutdown: Event to signal shutdown
         config_dict: Configuration dictionary
     """
+    # Ignore signals in worker processes - let main process handle them
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+    
     logger = get_logger('FaceMeshWorker')
     logger.info("Face Mesh Worker started")
     
@@ -239,6 +253,10 @@ def communication_worker(
         shutdown: Event to signal shutdown
         config_dict: Configuration dictionary
     """
+    # Ignore signals in worker processes - let main process handle them
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+    
     logger = get_logger('CommunicationWorker')
     logger.info("Communication Worker started")
     

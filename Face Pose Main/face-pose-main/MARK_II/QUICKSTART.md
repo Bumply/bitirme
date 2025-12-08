@@ -36,9 +36,41 @@ sudo reboot
 
 ---
 
-## 🎯 Step 2: Add Your Face Images (~2 minutes)
+## 🎮 Step 2: Launch the System (EASIEST WAY!)
 
-After reboot, add your face images:
+After reboot, use the **interactive launcher**:
+
+```bash
+cd ~/MARK_II
+python3 launcher.py
+```
+
+This gives you a nice menu:
+```
+╔══════════════════════════════════════════════════════════╗
+║  MARK II - Face-Controlled Wheelchair System             ║
+╚══════════════════════════════════════════════════════════╝
+
+Main Menu:
+─────────────────────────────────────
+  1) ▶  Start Application
+  2) ◼  Stop Application
+  3) 📋 View Recent Logs
+  4) ⚠  View Error Logs
+  5) 🗑  Clear Logs
+  6) 📷 Reset Camera
+  7) ⬇  Update from GitHub
+  8) ❓ Help / How to Use
+  0) ✕  Exit
+```
+
+**Press `1` to start, then follow on-screen instructions!**
+
+---
+
+## 🎯 Step 3: Add Your Face Images (~2 minutes)
+
+Add your face images:
 
 ```bash
 cd ~/MARK_II
