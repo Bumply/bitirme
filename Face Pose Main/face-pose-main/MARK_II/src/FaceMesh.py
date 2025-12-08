@@ -7,7 +7,7 @@ import cv2
 import mediapipe as mp
 import numpy as np
 import time
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple, List, Any
 
 
 class FaceMeshError(Exception):
@@ -87,7 +87,7 @@ class FaceMesh:
             self.logger.error(f"Failed to initialize Face Mesh: {e}", exc_info=True)
             raise FaceMeshError(f"MediaPipe initialization failed: {e}")
     
-    def process(self, image: np.ndarray) -> bool:
+    def process(self, image: np.ndarray) -> Optional[List]:
         """
         Process image and extract facial landmarks and pose
         
@@ -95,10 +95,10 @@ class FaceMesh:
             image: Input image (BGR format)
             
         Returns:
-            True if face detected and processed, False otherwise
+            List of facial landmarks if face detected, None otherwise
         """
         if not self._validate_image(image):
-            return False
+            return None
         
         start_time = time.time()
         
@@ -145,12 +145,12 @@ class FaceMesh:
                     process_time = (time.time() - start_time) * 1000
                     self.logger.debug(f"Face mesh processing: {process_time:.1f}ms")
                 
-                return True
+                return self.face  # Return landmarks
             else:
                 # No face detected
                 if self.process_count % 30 == 0:  # Log occasionally
                     self.logger.debug("No face detected in frame")
-                return False
+                return None
                 
         except cv2.error as e:
             self.error_count += 1

@@ -146,6 +146,8 @@ performance:
   
 # User Interface Settings
 ui:
+  show_frame: true  # Show debug window with video feed
+  
   window:
     name: "Wheelchair Control System - MARK II"
     width: 800

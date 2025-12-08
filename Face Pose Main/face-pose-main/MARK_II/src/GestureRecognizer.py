@@ -7,9 +7,15 @@ import numpy as np
 from enum import Enum
 import time
 from typing import List, Tuple, Optional
+import os
 import sys
-sys.path.append('..')
-from src import landmark_indexes
+
+# Import landmark_indexes from same directory
+try:
+    import landmark_indexes
+except ImportError:
+    # Fallback for different import contexts
+    from . import landmark_indexes
 
 
 class Gesture(Enum):

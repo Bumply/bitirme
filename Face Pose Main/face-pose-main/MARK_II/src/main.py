@@ -58,8 +58,7 @@ def face_recognition_worker(
         
         # Load trained users
         if not recognizer.train():
-            logger.error("Failed to train face recognizer")
-            return
+            logger.warning("No users trained for face recognizer")
         
         frame_count = 0
         
@@ -75,16 +74,20 @@ def face_recognition_worker(
                     frame_count += 1
                     
                     # Process frame
-                    user = recognizer.process(frame)
+                    recognizer.process(frame)
+                    
+                    # Get recognized user
+                    user = recognizer.get_user()
+                    user_name = user.name if user else None
                     
                     # Send result
                     if not fr_output_queue.full():
-                        fr_output_queue.put(user)
+                        fr_output_queue.put(user_name)
                     
                     # Log periodically
                     if frame_count % 100 == 0:
                         stats = recognizer.get_stats()
-                        logger.debug(f"Processed {frame_count} frames, recognized users: {stats['recognized_count']}")
+                        logger.debug(f"Processed {frame_count} frames, recognized users: {stats['recognition_count']}")
                 
                 else:
                     time.sleep(0.001)  # Small sleep to prevent busy waiting
@@ -124,13 +127,16 @@ def face_mesh_worker(
         face_mesh = FaceMesh(config_dict, logger)
         gesture_recognizer = GestureRecognizer(config_dict, logger)
         
-        # Get calibration settings
-        calibration_time = config_dict.get('face_mesh', {}).get('calibration_time', 3)
+        # Get calibration settings from config
+        cal_config = config_dict.get('calibration', {}).get('head_pose', {})
+        calibration_time = cal_config.get('neutral_hold_time', 5) + cal_config.get('calibration_time', 3)
         
-        # Calibration
-        logger.info(f"Starting calibration ({calibration_time}s)...")
+        # Calibration state
         calibration_start = time.time()
-        calibration_frames = 0
+        head_calibrated = False
+        brow_calibrated = False
+        
+        logger.info(f"Starting calibration ({calibration_time}s)...")
         
         while not shutdown.is_set():
             try:
@@ -145,28 +151,58 @@ def face_mesh_worker(
                     landmarks = face_mesh.process(frame)
                     
                     if landmarks is not None:
-                        # Calibration phase
                         elapsed = time.time() - calibration_start
                         
-                        if elapsed < calibration_time:
-                            face_mesh.calibrate(landmarks)
-                            gesture_recognizer.calibrate(landmarks)
-                            calibration_frames += 1
+                        # Calibration phase
+                        if not head_calibrated:
+                            instruction, pitch_offset, yaw_offset = face_mesh.calibrate()
                             
-                            if calibration_frames % 30 == 0:
-                                logger.info(f"Calibrating... {int(calibration_time - elapsed)}s remaining")
+                            if face_mesh.calibrated:
+                                face_mesh.set_offsets(pitch_offset, yaw_offset)
+                                head_calibrated = True
+                                logger.info("Head pose calibration complete")
+                            elif int(elapsed) % 2 == 0:
+                                logger.info(f"Calibrating head pose... {instruction}")
                         
-                        # Normal operation
+                        elif not brow_calibrated:
+                            # Need to process gesture first to get ratio
+                            gesture_recognizer.process(
+                                landmarks,
+                                face_mesh.pitch,
+                                face_mesh.yaw,
+                                face_mesh.pitchOffset,
+                                face_mesh.yawOffset
+                            )
+                            instruction, threshold = gesture_recognizer.calibrate()
+                            
+                            if gesture_recognizer.is_calibrated():
+                                gesture_recognizer.set_brow_raise_threshold(threshold)
+                                brow_calibrated = True
+                                logger.info("Eyebrow calibration complete")
+                            elif int(elapsed) % 2 == 0:
+                                logger.info(f"Calibrating eyebrow... {instruction}")
+                        
+                        # Normal operation (after calibration)
                         else:
-                            # Get head pose
-                            yaw, pitch = face_mesh.get_true_angles(landmarks)
+                            # Get head pose angles
+                            yaw, pitch = face_mesh.get_yaw_pitch()
                             
                             # Detect gestures
-                            gesture = gesture_recognizer.process(landmarks, yaw, pitch)
+                            gesture = gesture_recognizer.process(
+                                landmarks,
+                                face_mesh.pitch,
+                                face_mesh.yaw,
+                                face_mesh.pitchOffset,
+                                face_mesh.yawOffset
+                            )
                             
                             # Send results
                             if not fm_output_queue.full():
                                 fm_output_queue.put((yaw, pitch, gesture))
+                    else:
+                        # No face detected - send None values
+                        if not fm_output_queue.full():
+                            fm_output_queue.put((None, None, Gesture.NONE))
                 
                 else:
                     time.sleep(0.001)  # Small sleep to prevent busy waiting
@@ -418,8 +454,8 @@ class WheelchairController:
                 if not self.fm_output_queue.empty():
                     yaw, pitch, gesture = self.fm_output_queue.get()
                     
-                    self.last_yaw = yaw
-                    self.last_pitch = pitch
+                    self.last_yaw = yaw if yaw is not None else 0
+                    self.last_pitch = pitch if pitch is not None else 0
                     
                     # Check for face lost
                     if yaw is None or pitch is None:
@@ -427,8 +463,8 @@ class WheelchairController:
                             self.face_lost_time = time.time()
                             self.logger.warning("Face lost")
                         
-                        # Face lost timeout
-                        face_lost_timeout = self.safety_config.get('face_lost_timeout', 2.0)
+                        # Face lost timeout - use correct config key name
+                        face_lost_timeout = self.safety_config.get('face_lost_timeout_seconds', 2.0)
                         if time.time() - self.face_lost_time > face_lost_timeout:
                             if self.wheelchair_enabled:
                                 self.logger.warning("Face lost timeout, disabling wheelchair")
@@ -493,12 +529,26 @@ class WheelchairController:
         if yaw is None or pitch is None:
             return 0, 0
         
-        # Get control settings
-        min_control_pitch = self.control_config.get('min_control_pitch', 5)
-        max_control_pitch = self.control_config.get('max_control_pitch', 15)
-        min_control_yaw = self.control_config.get('min_control_yaw', 5)
-        max_control_yaw = self.control_config.get('max_control_yaw', 25)
-        max_speed_percent = self.control_config.get('max_speed_percent', 20)
+        # Get control settings from config
+        # pitch settings
+        pitch_config = self.control_config.get('pitch', {})
+        pitch_range = pitch_config.get('range', [-35, 35])
+        pitch_dead_zone = pitch_config.get('dead_zone', 2)
+        
+        # yaw settings  
+        yaw_config = self.control_config.get('yaw', {})
+        yaw_range = yaw_config.get('range', [-35, 35])
+        yaw_dead_zone = yaw_config.get('dead_zone', 2)
+        
+        # speed settings
+        speed_config = self.control_config.get('speed', {})
+        max_speed_percent = speed_config.get('max_percent', 20)
+        
+        # Calculate derived values
+        min_control_pitch = pitch_dead_zone
+        max_control_pitch = pitch_range[1]  # Use max of range
+        min_control_yaw = yaw_dead_zone
+        max_control_yaw = yaw_range[1]  # Use max of range
         
         # Calculate speed from pitch (looking down = forward)
         if pitch > min_control_pitch:
@@ -532,8 +582,10 @@ class WheelchairController:
         user_text = f"User: {self.current_user if self.current_user else 'Unknown'}"
         cv2.putText(frame, user_text, (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
         
-        # Head pose
-        pose_text = f"Yaw: {self.last_yaw:.1f}, Pitch: {self.last_pitch:.1f}"
+        # Head pose (handle None values)
+        yaw_val = self.last_yaw if self.last_yaw is not None else 0
+        pitch_val = self.last_pitch if self.last_pitch is not None else 0
+        pose_text = f"Yaw: {yaw_val:.1f}, Pitch: {pitch_val:.1f}"
         cv2.putText(frame, pose_text, (10, 110), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
     
     def shutdown(self):
