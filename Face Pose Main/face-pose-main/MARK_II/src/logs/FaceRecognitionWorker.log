@@ -9,3 +9,9 @@
 2025-12-08 14:58:09 - FaceRecognitionWorker - [32mINFO[0m - Face Recognizer initialized (model: hog, confidence: 0.5)
 2025-12-08 14:58:09 - FaceRecognitionWorker - [32mINFO[0m - Starting face recognition training...
 2025-12-08 14:58:09 - FaceRecognitionWorker - [33mWARNING[0m - No user directories found for training
+2025-12-08 15:58:31 - FaceRecognitionWorker - [32mINFO[0m - Face Recognition Worker started
+2025-12-08 15:58:31 - FaceRecognitionWorker - [32mINFO[0m - Face Recognizer initialized (model: hog, confidence: 0.5)
+2025-12-08 15:58:31 - FaceRecognitionWorker - [32mINFO[0m - Starting face recognition training...
+2025-12-08 15:58:31 - FaceRecognitionWorker - [33mWARNING[0m - No user directories found for training
+2025-12-08 15:59:35 - FaceRecognitionWorker - [32mINFO[0m - Face Recognition Worker shutting down...
+2025-12-08 15:59:35 - FaceRecognitionWorker - [32mINFO[0m - Face Recognition Worker terminated

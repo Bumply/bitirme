@@ -157,3 +157,53 @@
 2025-12-08 14:58:32 - FaceMeshWorker - [33mWARNING[0m - Insufficient difference between raised/lowered, retrying...
 2025-12-08 14:58:32 - FaceMeshWorker - [32mINFO[0m - Calibrating eyebrow... Raise your eyebrows
 2025-12-08 14:58:32 - FaceMeshWorker - [32mINFO[0m - Calibrating eyebrow... Raise your eyebrows
+2025-12-08 15:58:31 - FaceMeshWorker - [32mINFO[0m - Face Mesh Worker started
+2025-12-08 15:58:31 - FaceMeshWorker - [32mINFO[0m - Initializing MediaPipe Face Mesh...
+2025-12-08 15:58:31 - FaceMeshWorker - [32mINFO[0m - Face Mesh initialized successfully
+2025-12-08 15:58:31 - FaceMeshWorker - [32mINFO[0m - Gesture Recognizer initialized (eyebrow: True, blink: False)
+2025-12-08 15:58:31 - FaceMeshWorker - [32mINFO[0m - Starting calibration (8s)...
+2025-12-08 15:58:42 - FaceMeshWorker - [32mINFO[0m - Head pose calibration started
+2025-12-08 15:58:43 - FaceMeshWorker - [32mINFO[0m - Calibrating head pose... Position your head neutrally
+2025-12-08 15:58:43 - FaceMeshWorker - [32mINFO[0m - Calibrating head pose... Position your head neutrally
+2025-12-08 15:58:43 - FaceMeshWorker - [32mINFO[0m - Calibrating head pose... Position your head neutrally
+2025-12-08 15:58:43 - FaceMeshWorker - [32mINFO[0m - Calibrating head pose... Position your head neutrally
+2025-12-08 15:58:44 - FaceMeshWorker - [32mINFO[0m - Calibrating head pose... Position your head neutrally
+2025-12-08 15:58:44 - FaceMeshWorker - [32mINFO[0m - Calibrating head pose... Position your head neutrally
+2025-12-08 15:58:45 - FaceMeshWorker - [32mINFO[0m - Calibrating head pose... Position your head neutrally
+2025-12-08 15:58:45 - FaceMeshWorker - [32mINFO[0m - Calibrating head pose... Position your head neutrally
+2025-12-08 15:58:45 - FaceMeshWorker - [32mINFO[0m - Calibrating head pose... Position your head neutrally
+2025-12-08 15:58:45 - FaceMeshWorker - [32mINFO[0m - Calibrating head pose... Position your head neutrally
+2025-12-08 15:58:45 - FaceMeshWorker - [32mINFO[0m - Calibrating head pose... Position your head neutrally
+2025-12-08 15:58:46 - FaceMeshWorker - [32mINFO[0m - Calibrating head pose... Position your head neutrally
+2025-12-08 15:58:46 - FaceMeshWorker - [32mINFO[0m - Calibrating head pose... Position your head neutrally
+2025-12-08 15:58:47 - FaceMeshWorker - [32mINFO[0m - Calibrating head pose... Position your head neutrally
+2025-12-08 15:58:47 - FaceMeshWorker - [32mINFO[0m - Calibrating head pose... Position your head neutrally
+2025-12-08 15:58:47 - FaceMeshWorker - [32mINFO[0m - Calibrating head pose... Position your head neutrally
+2025-12-08 15:58:47 - FaceMeshWorker - [32mINFO[0m - Calibrating head pose... Stay still
+2025-12-08 15:58:48 - FaceMeshWorker - [32mINFO[0m - Calibrating head pose... Stay still
+2025-12-08 15:58:48 - FaceMeshWorker - [32mINFO[0m - Calibrating head pose... Stay still
+2025-12-08 15:58:49 - FaceMeshWorker - [32mINFO[0m - Calibrating head pose... Stay still
+2025-12-08 15:58:49 - FaceMeshWorker - [32mINFO[0m - Calibrating head pose... Stay still
+2025-12-08 15:58:49 - FaceMeshWorker - [32mINFO[0m - Calibrating head pose... Stay still
+2025-12-08 15:58:49 - FaceMeshWorker - [32mINFO[0m - Calibrating head pose... Stay still
+2025-12-08 15:58:50 - FaceMeshWorker - [32mINFO[0m - Calibrating head pose... Stay still
+2025-12-08 15:58:50 - FaceMeshWorker - [32mINFO[0m - Calibrating head pose... Stay still
+2025-12-08 15:58:51 - FaceMeshWorker - [32mINFO[0m - Calibration complete: pitch_offset=-12.0, yaw_offset=-1.0
+2025-12-08 15:58:51 - FaceMeshWorker - [32mINFO[0m - Offsets set: pitch=-12.0, yaw=-1.0
+2025-12-08 15:58:51 - FaceMeshWorker - [32mINFO[0m - Head pose calibration complete
+2025-12-08 15:58:51 - FaceMeshWorker - [32mINFO[0m - Eyebrow calibration started
+2025-12-08 15:58:51 - FaceMeshWorker - [32mINFO[0m - Calibrating eyebrow... Raise your eyebrows
+2025-12-08 15:58:51 - FaceMeshWorker - [32mINFO[0m - Calibrating eyebrow... Raise your eyebrows
+2025-12-08 15:58:51 - FaceMeshWorker - [32mINFO[0m - Calibrating eyebrow... Raise your eyebrows
+2025-12-08 15:58:52 - FaceMeshWorker - [32mINFO[0m - Calibrating eyebrow... Raise your eyebrows
+2025-12-08 15:58:52 - FaceMeshWorker - [32mINFO[0m - Calibrating eyebrow... Raise your eyebrows
+2025-12-08 15:58:53 - FaceMeshWorker - [32mINFO[0m - Calibrating eyebrow... Raise your eyebrows
+2025-12-08 15:58:53 - FaceMeshWorker - [32mINFO[0m - Calibrating eyebrow... Raise your eyebrows
+2025-12-08 15:58:53 - FaceMeshWorker - [32mINFO[0m - Calibrating eyebrow... Raise your eyebrows
+2025-12-08 15:58:53 - FaceMeshWorker - [32mINFO[0m - Calibrating eyebrow... Raise your eyebrows
+2025-12-08 15:58:53 - FaceMeshWorker - [32mINFO[0m - Calibrating eyebrow... Raise your eyebrows
+2025-12-08 15:58:54 - FaceMeshWorker - [32mINFO[0m - Calibrating eyebrow... Raise your eyebrows
+2025-12-08 15:58:54 - FaceMeshWorker - [32mINFO[0m - Calibrating eyebrow... Lower your eyebrows
+2025-12-08 15:58:55 - FaceMeshWorker - [32mINFO[0m - Calibrating eyebrow... Lower your eyebrows
+2025-12-08 15:59:35 - FaceMeshWorker - [32mINFO[0m - Face Mesh Worker shutting down...
+2025-12-08 15:59:35 - FaceMeshWorker - [32mINFO[0m - Face Mesh Worker terminated
