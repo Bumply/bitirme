@@ -24,8 +24,8 @@ logging:
 camera:
   source: 0  # Not used for PiCamera, but kept for compatibility
   resolution:
-    width: 640
-    height: 480
+    width: 320
+    height: 240
   fps: 20
   flip_horizontal: true
   backend: "picamera"  # cv2, imutils, picamera - CHANGED TO PICAMERA FOR RIBBON CAMERA
