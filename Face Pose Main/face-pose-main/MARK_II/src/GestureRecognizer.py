@@ -68,7 +68,9 @@ class GestureRecognizer:
         self.blink_threshold = blink_config.get('threshold', 0.3)
         
         # State variables
-        self.brow_raise_threshold = 10000  # Will be calibrated
+        # Default threshold set to a reasonable value (works without calibration)
+        # Higher = more eyebrow raise needed, Lower = more sensitive
+        self.brow_raise_threshold = 400  # Reasonable default (higher to prevent false positives)
         self.normalized_ratio = 0
         self.ratio_list = []
         self.weight_list = []
@@ -167,7 +169,7 @@ class GestureRecognizer:
     
     def _check_eyebrow_raise(self, face: List):
         """
-        Detect eyebrow raise gesture
+        Detect eyebrow raise gesture with crash protection
         
         Args:
             face: Facial landmarks
@@ -178,6 +180,12 @@ class GestureRecognizer:
                 face[landmark_indexes.MOUTH_UPPER],
                 face[landmark_indexes.MID_FACE_UP]
             )
+            
+            # ===== CRASH FIX: Guard against invalid distances =====
+            if head_height < 5.0:  # Face too close or invalid
+                self.logger.debug("Face too close: head_height too small")
+                return
+            # ===== END CRASH FIX =====
             
             # Get eyebrow to head distance (choose side based on yaw)
             if self.true_yaw < 0:
@@ -191,21 +199,55 @@ class GestureRecognizer:
                     face[landmark_indexes.RIGHT_FACE_UP]
                 )
             
-            # Calculate ratio
-            if brow_to_head_distance == 0:
+            # ===== CRASH FIX: Guard against division by zero =====
+            if brow_to_head_distance < 1.0:  # Too close or invalid
+                self.logger.debug("Face too close: brow distance too small")
                 return
+            # ===== END CRASH FIX =====
             
             dist_ratio = head_height / brow_to_head_distance * 100
             
-            # Compensate for pitch (head tilt up/down)
-            if self.true_pitch > 0:
-                corrected_ratio = dist_ratio - (self.true_pitch * 1.8)
-            else:
-                corrected_ratio = dist_ratio - (self.true_pitch * 1.2)
+            # ===== CRASH FIX: Guard against extreme ratios =====
+            if dist_ratio < 0 or dist_ratio > 1000:
+                self.logger.debug(f"Ignoring extreme dist_ratio: {dist_ratio}")
+                return
+            # ===== END CRASH FIX =====
             
-            # Compensate for yaw (head turn left/right)
-            if abs(self.true_yaw) > 18:
-                corrected_ratio = corrected_ratio - abs(self.true_yaw * 2.6)
+            # ===== HEAD MOVEMENT GUARD =====
+            # Don't trigger during significant head movement
+            # Check if head pose has changed significantly
+            pitch_delta = abs(self.true_pitch - getattr(self, '_last_pitch', self.true_pitch))
+            yaw_delta = abs(self.true_yaw - getattr(self, '_last_yaw', self.true_yaw))
+            self._last_pitch = self.true_pitch
+            self._last_yaw = self.true_yaw
+            
+            # If head is moving too fast, don't detect (prevents false positives)
+            if pitch_delta > 3.0 or yaw_delta > 4.0:
+                self.brow_raised = False
+                return
+            
+            # Don't detect when head is significantly tilted or turned
+            if abs(self.true_pitch) > 25 or abs(self.true_yaw) > 30:
+                self.brow_raised = False
+                return
+            # ===== END HEAD MOVEMENT GUARD =====
+            
+            # Compensate for pitch (head tilt up/down) - STRONGER compensation
+            if self.true_pitch > 0:  # Looking up
+                corrected_ratio = dist_ratio - (self.true_pitch * 3.0)  # Was 1.8
+            else:  # Looking down
+                corrected_ratio = dist_ratio - (self.true_pitch * 2.5)  # Was 1.2
+            
+            # Compensate for yaw (head turn left/right) - STRONGER compensation
+            yaw_compensation = abs(self.true_yaw) * 3.5  # Was 2.6
+            if abs(self.true_yaw) > 10:  # Start compensating earlier (was 18)
+                corrected_ratio = corrected_ratio - yaw_compensation
+            
+            # ===== CRASH FIX: Validate corrected ratio =====
+            if np.isnan(corrected_ratio) or np.isinf(corrected_ratio):
+                self.logger.debug("Invalid corrected_ratio (NaN/Inf)")
+                return
+            # ===== END CRASH FIX =====
             
             # Add to history for smoothing
             self.ratio_list.append(corrected_ratio)
@@ -214,13 +256,30 @@ class GestureRecognizer:
             if len(self.ratio_list) >= 10:
                 self.avg_ratio = np.average(self.ratio_list)
                 
-                # Calculate weight based on deviation from average
+                # ===== CRASH FIX: Safe weight calculation =====
                 if self.avg_ratio != 0:
-                    weight = 1 / (1 - (abs(self.avg_ratio - corrected_ratio) / self.avg_ratio))
+                    deviation = abs(self.avg_ratio - corrected_ratio) / abs(self.avg_ratio)
+                    
+                    # Guard against division by zero and overflow
+                    if deviation >= 0.95:  # Would cause overflow or division by near-zero
+                        weight = 1.0  # Default weight
+                    else:
+                        weight = 1.0 / (1.0 - deviation)
+                    
+                    # Cap weight to prevent extreme values
+                    weight = min(max(weight, 0.1), 10.0)
                     self.weight_list.append(weight)
+                else:
+                    self.weight_list.append(1.0)  # Default weight
+                # ===== END CRASH FIX =====
                 
                 if len(self.weight_list) >= 10:
-                    self.normalized_ratio = np.average(self.ratio_list, weights=self.weight_list)
+                    # Validate weights before averaging
+                    valid_weights = [w for w in self.weight_list if not (np.isnan(w) or np.isinf(w))]
+                    if len(valid_weights) == len(self.ratio_list):
+                        self.normalized_ratio = np.average(self.ratio_list, weights=valid_weights)
+                    else:
+                        self.normalized_ratio = np.average(self.ratio_list)
                     self.weight_list.pop(0)
                 else:
                     self.normalized_ratio = np.average(self.ratio_list)
@@ -228,6 +287,13 @@ class GestureRecognizer:
                 self.ratio_list.pop(0)
             else:
                 self.normalized_ratio = corrected_ratio
+            
+            # ===== CRASH FIX: Final validation =====
+            if np.isnan(self.normalized_ratio) or np.isinf(self.normalized_ratio):
+                self.normalized_ratio = 0
+                self.logger.debug("Reset normalized_ratio due to invalid value")
+                return
+            # ===== END CRASH FIX =====
             
             # Check against threshold
             if self.normalized_ratio > self.brow_raise_threshold:
