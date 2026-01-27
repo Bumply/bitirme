@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EEG Wheelchair Progress</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="neural-bg">
+        <canvas id="neuroCanvas"></canvas>
+    </div>
+
+    <header>
+        <div class="logo">MEDULLA <span class="accent">OS</span></div>
+        <nav>
+            <a href="#overview" class="active">Overview</a>
+            <a href="#timeline">Timeline</a>
+            <a href="#hardware">Hardware</a>
+            <a href="#logs">Dev Logs</a>
+        </nav>
+    </header>
+
+    <main>
+        <section id="hero">
+            <h1 class="glitch" data-text="EEG CONTROLLED">EEG CONTROLLED</h1>
+            <h2 class="subtitle">AUTONOMOUS WHEELCHAIR SYSTEM</h2>
+            <p class="mission-statement">
+                Bridging the gap between thought and motion. A next-generation interface transforming neural signals into physical mobility.
+            </p>
+            <div class="status-badge">
+                <span class="indicator pulse"></span>
+                SYSTEM STATUS: <span class="text-accent">DEVELOPMENT</span>
+            </div>
+        </section>
+
+        <!-- Placeholder for User Content -->
+        <section id="content-container">
+            <div class="glass-card">
+                <h3>Current Objective</h3>
+                <p id="current-objective">Initializing project parameters... Awaiting input.</p>
+            </div>
+        </section>
+
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
