@@ -26,7 +26,7 @@ camera:
   resolution:
     width: 640
     height: 480
-  fps: 30
+  fps: 20
   flip_horizontal: true
   backend: "picamera"  # cv2, imutils, picamera - CHANGED TO PICAMERA FOR RIBBON CAMERA
   
