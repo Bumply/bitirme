@@ -1,14 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EEG Wheelchair Progress</title>
+    <title>E-Wheelchair V3 | Link-Free BCI</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Orbitron:wght@400;700&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
     <div class="neural-bg">
@@ -18,36 +22,163 @@
     <header>
         <div class="logo">MEDULLA <span class="accent">OS</span></div>
         <nav>
-            <a href="#overview" class="active">Overview</a>
+            <a href="#mission">Mission</a>
+            <a href="#tech">Tech Stack</a>
+            <a href="#design">Design</a>
             <a href="#timeline">Timeline</a>
-            <a href="#hardware">Hardware</a>
-            <a href="#logs">Dev Logs</a>
         </nav>
     </header>
 
     <main>
+        <!-- HERO -->
         <section id="hero">
-            <h1 class="glitch" data-text="EEG CONTROLLED">EEG CONTROLLED</h1>
-            <h2 class="subtitle">AUTONOMOUS WHEELCHAIR SYSTEM</h2>
+            <h1 class="glitch" data-text="E-WHEELCHAIR V3">E-WHEELCHAIR V3</h1>
+            <h2 class="subtitle">HIERARCHICAL GAZE-FREE BCI NAVIGATION</h2>
             <p class="mission-statement">
-                Bridging the gap between thought and motion. A next-generation interface transforming neural signals into physical mobility.
+                A fully embedded, battery-operated, hands-free wheelchair system designed for high-level spinal cord
+                injury patients.
+                Classifying Motor Imagery (MI) dynamics for navigational autonomy.
             </p>
             <div class="status-badge">
                 <span class="indicator pulse"></span>
-                SYSTEM STATUS: <span class="text-accent">DEVELOPMENT</span>
+                PHASE: <span class="text-accent">INTEGRATION</span>
             </div>
         </section>
 
-        <!-- Placeholder for User Content -->
-        <section id="content-container">
+        <!-- MISSION -->
+        <section id="mission">
             <div class="glass-card">
-                <h3>Current Objective</h3>
-                <p id="current-objective">Initializing project parameters... Awaiting input.</p>
+                <h3>The Mission</h3>
+                <p><strong>Problem:</strong> Standard joystick controls are unusable for patients with Locked-in
+                    Syndrome or ALS, and existing BCI solutions rely on heavy external laptops, preventing real-world
+                    mobility.</p>
+                <br>
+                <p><strong>Goal:</strong> Engineer a system that runs entirely on embedded hardware (Raspberry Pi 5),
+                    does not occupy the user's visual channel (Gaze-free), and handles the low Signal-to-Noise Ratio
+                    (SNR) inherent in wearable EEG.</p>
+            </div>
+        </section>
+
+        <!-- TECH STACK -->
+        <section id="tech">
+            <div class="glass-card">
+                <h3>The Tech Stack</h3>
+                <div class="tech-grid">
+
+                    <!-- Signal Acquisition -->
+                    <div class="tech-item">
+                        <h4>A. Signal Acquisition (The Nerves)</h4>
+                        <ul>
+                            <li><strong>Node:</strong> Custom OpenBCI Cyton Clone (ADS1299 ADC)</li>
+                            <li><strong>Electrodes:</strong> Dry Ag/AgCl at C3, Cz, C4 (Motor Cortex)</li>
+                            <li><strong>Headset:</strong> Custom Ultracortex (PLA Printed)</li>
+                            <li><strong>Connectivity:</strong> Bluetooth HC-06 (Galvanic Isolation)</li>
+                            <li><strong>Power:</strong> Isolated 3.7V Li-Ion</li>
+                        </ul>
+                    </div>
+
+                    <!-- Computing -->
+                    <div class="tech-item">
+                        <h4>B. Hierarchical Computing (The Brain)</h4>
+                        <ul>
+                            <li><strong>Host:</strong> Raspberry Pi 5 (8GB) - AI & Filtering</li>
+                            <li><strong>Stack:</strong> Linux, MNE-Python, TensorFlow</li>
+                            <li><strong>Accelerator:</strong> Google Coral Edge TPU</li>
+                            <li><strong>Controller:</strong> Arduino Mega 2560 (Watchdog & Motor PWM)</li>
+                        </ul>
+                    </div>
+
+                    <!-- Actuation -->
+                    <div class="tech-item">
+                        <h4>C. Actuation (The Body)</h4>
+                        <ul>
+                            <li><strong>Drive:</strong> 48V BO3 High-Torque Hub Motors</li>
+                            <li><strong>Steering:</strong> DC Gear Active Steering (No skid-steer jerk)</li>
+                            <li><strong>Drivers:</strong> BTS7960 High-Current H-Bridges</li>
+                            <li><strong>Chassis:</strong> Custom "Pegboard" modular electrical box</li>
+                        </ul>
+                    </div>
+
+                    <!-- Software -->
+                    <div class="tech-item">
+                        <h4>D. Algorithms (The Mind)</h4>
+                        <ul>
+                            <li><strong>Filter:</strong> 5th-Order Butterworth (8-30 Hz)</li>
+                            <li><strong>Features:</strong> Common Spatial Pattern (CSP)</li>
+                            <li><strong>Classifier:</strong> Linear Discriminant Analysis (LDA)</li>
+                            <li><strong>Safety:</strong> >500ms Latency Safe-Stop</li>
+                        </ul>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- DESIGN DECISIONS -->
+        <section id="design">
+            <div class="glass-card">
+                <h3>Design Decisions (FAQ)</h3>
+                <div class="faq-item">
+                    <h4>Why Reject NI USB-6009?</h4>
+                    <p>Although available, the NI USB-6009 fails two critical requirements:</p>
+                    <ul>
+                        <li><strong>Gain Mismatch:</strong> Lacks PGA for micro-volt EEG signals (SNR ~0).</li>
+                        <li><strong>Safety Violation:</strong> Wired USB breaks Galvanic Isolation. Bluetooth provides a
+                            necessary air-gap barrier against 48V motor spikes.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- TIMELINE -->
+        <section id="timeline">
+            <div class="glass-card">
+                <h3>Project Timeline</h3>
+                <div class="timeline">
+                    <div class="timeline-item">
+                        <div class="timeline-phase">PHASE 1: DESIGN & SIMULATION (COMPLETED)</div>
+                        <p>Literature Review, Constraint Analysis, and Algorithm validation using BCI Competition IV
+                            datasets.</p>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-phase">PHASE 2: HARDWARE FABRICATION (COMPLETED)</div>
+                        <p>Custom PCB fabrication (OpenBCI Clone), 3D Printing Headset, Bluetooth Isolation
+                            verification.</p>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-phase" style="color: var(--secondary);">PHASE 3: INTEGRATION (CURRENT)
+                        </div>
+                        <p>Merging Python Multiprocessing stack with Arduino UART. Implementing Kalman Filtering for EMI
+                            rejection.</p>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-phase" style="color: grey;">PHASE 4: FIELD TESTING (UPCOMING)</div>
+                        <p>Full system latency tests. E-Stop reliability verification.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- BUDGET -->
+        <section id="budget">
+            <div class="glass-card">
+                <h3>Project Budget</h3>
+                <p style="margin-bottom: 1rem;">Total Prototype Cost: <span class="accent">$551</span></p>
+                <div class="budget-grid">
+                    <div class="budget-tag">Signal Acquisition: $370</div>
+                    <div class="budget-tag">Compute (Pi5 + Coral): $150</div>
+                    <div class="budget-tag">Manufacturing: $31</div>
+                </div>
             </div>
         </section>
 
     </main>
 
+    <footer>
+        <p>&copy; 2026 Medulla OS Project. Built for Bitirme.</p>
+    </footer>
+
     <script src="script.js"></script>
 </body>
+
 </html>
