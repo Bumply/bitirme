@@ -330,3 +330,125 @@ strong {
         clip: rect(102px, 9999px, 120px, 0);
     }
 }
+
+/* --- TECHNICAL DOCUMENTATION STYLES --- */
+
+.tech-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+    display: grid;
+    grid-template-columns: 250px 1fr;
+    gap: 2rem;
+}
+
+.tech-sidebar {
+    position: sticky;
+    top: 100px;
+    height: fit-content;
+    background: rgba(20, 20, 40, 0.8);
+    backdrop-filter: blur(10px);
+    border-right: 1px solid var(--primary);
+    padding: 1rem;
+    border-radius: 8px;
+}
+
+.tech-sidebar h3 {
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+    color: var(--primary);
+    border: none;
+}
+
+.tech-sidebar ul {
+    list-style: none;
+    padding: 0;
+}
+
+.tech-sidebar li {
+    margin-bottom: 0.8rem;
+}
+
+.tech-sidebar a {
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color 0.3s;
+    font-size: 0.95rem;
+}
+
+.tech-sidebar a:hover {
+    color: var(--primary);
+    padding-left: 5px;
+}
+
+.tech-content {
+    background: rgba(10, 10, 20, 0.6);
+    padding: 2rem;
+    border-radius: 12px;
+    border: 1px solid var(--glass-border);
+}
+
+.tech-section {
+    margin-bottom: 4rem;
+    scroll-margin-top: 100px;
+}
+
+/* Diagrams */
+.diagram-container {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1.5rem 0;
+    overflow-x: auto;
+    text-align: center;
+}
+
+/* Code Blocks */
+pre {
+    background: #0d0d1a;
+    padding: 1rem;
+    border-radius: 6px;
+    border-left: 3px solid var(--secondary);
+    overflow-x: auto;
+    margin: 1rem 0;
+}
+
+code {
+    font-family: 'Courier New', Courier, monospace;
+    color: #e0e0ff;
+    font-size: 0.9rem;
+}
+
+/* Math */
+.math-block {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 1rem;
+    border-radius: 8px;
+    text-align: center;
+    margin: 1.5rem 0;
+    font-family: 'Times New Roman', serif;
+    font-style: italic;
+    font-size: 1.2rem;
+}
+
+/* Tables */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.5rem 0;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+th,
+td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+th {
+    color: var(--primary);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.9rem;
+}

@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neuro Drive | Technical Documentation</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Orbitron:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Mermaid JS for Diagrams -->
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.Jm';
+        mermaid.initialize({ startOnLoad: true, theme: 'dark' });
+    </script>
+
+    <!-- MathJax for Equations -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+
+<body>
+
+    <div class="neural-bg">
+        <canvas id="neuroCanvas"></canvas>
+    </div>
+
+    <header>
+        <div class="logo">Neuro <span class="accent">Drive</span> <span
+                style="font-size: 0.6em; color: var(--text-muted);">// ENGINEER DOCS</span></div>
+        <nav>
+            <a href="index.html">Home</a>
+            <a href="#sys-arch" class="active">Systems</a>
+        </nav>
+    </header>
+
+    <div class="tech-container">
+        <!-- SIDEBAR NAVIGATION -->
+        <aside class="tech-sidebar">
+            <h3>Table of Contents</h3>
+            <nav>
+                <ul>
+                    <li><a href="#sys-arch">1. System Architecture</a></li>
+                    <li><a href="#sig-proc">2. Signal Processing (DSP)</a></li>
+                    <li><a href="#electrical">3. Electrical Schematics</a></li>
+                    <li><a href="#control">4. Control Algorithms</a></li>
+                    <li><a href="#latency">5. Latency Analysis</a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="tech-content">
+
+            <!-- 1. System Architecture -->
+            <section id="sys-arch" class="tech-section">
+                <h3>1. Hierarchical System Architecture</h3>
+                <p>The system utilizes a <strong>Master-Slave</strong> topology to ensure safety and determinism. The
+                    High-Level Host (Raspberry Pi 5) handles non-deterministic AI inference, while the Low-Level
+                    Controller (Arduino Mega) guarantees real-time motor actuation.</p>
+
+                <div class="diagram-container">
+                    <pre class="mermaid">
+graph LR
+    subgraph Headset ["User Headset (Ultracortex)"]
+        Sensors[Ag/AgCl Electrodes] --> ADC[ADS1299]
+        ADC --> uC_Head[Microcontroller]
+        uC_Head -.->|Bluetooth UART (Isolated)| Pi5
+    end
+
+    subgraph Robot ["Mobile Base"]
+        Pi5[Rabbit Pi 5 (Master)] -->|USB Serial| Arduino[Arduino Mega (Slave)]
+        Arduino -->|PWM| Driver1[BTS7960 Left]
+        Arduino -->|PWM| Driver2[BTS7960 Right]
+        Arduino -->|PWM| Steer[Steering Motor]
+        
+        Driver1 --> MotorL((Motor L))
+        Driver2 --> MotorR((Motor R))
+    end
+    
+    classDef hardware fill:#1a1a3a,stroke:#00f3ff,stroke-width:2px;
+    class Headset,Robot hardware;
+                    </pre>
+                </div>
+            </section>
+
+            <!-- 2. Signal Processing -->
+            <section id="sig-proc" class="tech-section">
+                <h3>2. Signal Processing Pipeline</h3>
+                <p>Raw EEG data is inherently noisy (\( \approx 10-100 \mu V \)). The DSP pipeline extracts Motor
+                    Imagery (MI) features in the <span class="accent">Mu (8-13 Hz)</span> and <span class="accent">Beta
+                        (14-30 Hz)</span> bands.</p>
+
+                <h4>2.1 Preprocessing</h4>
+                <p>A 5th-order Butterworth Bandpass filter is applied to remove DC offset and mains hum (50Hz).</p>
+                <div class="math-block">
+                    $$ H(s) = \frac{1}{\sqrt{1 + (\frac{\omega}{\omega_c})^{2n}}} $$
+                </div>
+
+                <h4>2.2 Feature Extraction: Common Spatial Pattern (CSP)</h4>
+                <p>CSP maximizes the variance of one class while minimizing the others. Given two classes (Left vs
+                    Right):</p>
+                <div class="math-block">
+                    $$ J(w) = \frac{w^T C_1 w}{w^T C_2 w} $$
+                </div>
+                <p>Where \( C_1, C_2 \) are the spatial covariance matrices of the respective classes. The projection
+                    matrix \( W \) consists of the eigenvectors of \( C_1^{-1} C_2 \).</p>
+
+                <h4>2.3 Data Flow</h4>
+                <div class="diagram-container">
+                    <pre class="mermaid">
+sequenceDiagram
+    participant ADC as ADS1299
+    participant Py as Python MNE
+    participant AI as TensorFlow Lite
+    participant Ard as Arduino
+    
+    ADC->>Py: Raw Stream (250Hz)
+    Py->>Py: Notch Filter (50Hz)
+    Py->>Py: Bandpass (8-30Hz)
+    Py->>Py: CSP Spatial Filter
+    Py->>AI: Feature Vector
+    AI-->>Py: Class Probability (L/R)
+    
+    alt Confidence > 0.85
+        Py->>Ard: Command: MOVE_FORWARD
+    else Confidence < 0.85
+        Py->>Ard: Command: BUSY
+    end
+                    </pre>
+                </div>
+            </section>
+
+            <!-- 3. Electrical -->
+            <section id="electrical" class="tech-section">
+                <h3>3. Electrical Specifications</h3>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Component</th>
+                            <th>Spec</th>
+                            <th>Role</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>ADS1299</td>
+                            <td>24-bit, 8-Channel, -110dB CMRR</td>
+                            <td>Biopotential ADC</td>
+                        </tr>
+                        <tr>
+                            <td>HC-06</td>
+                            <td>Bluetooth 2.0, 115200 Baud</td>
+                            <td>Galvanic Isolation Barrier</td>
+                        </tr>
+                        <tr>
+                            <td>BTS7960</td>
+                            <td>43A Peak, 24V-48V</td>
+                            <td>H-Bridge Motor Driver</td>
+                        </tr>
+                        <tr>
+                            <td>Li-Ion Pack</td>
+                            <td>48V 13S4P</td>
+                            <td>Main Traction Power</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h4>Safety: Galvanic Isolation</h4>
+                <p>
+                    Connecting the EEG headset directly to the robot's ground is a <strong>fatal safety risk</strong>. A
+                    high-voltage spike from the 48V motors could travel up the USB line into the user's brain.
+                </p>
+                <p>
+                    <strong>Solution:</strong> We use an <span class="accent">Air-Gap Bluetooth Link</span>. The headset
+                    runs on an isolated 3.7V battery, physically floating relative to the 48V robot chassis.
+                </p>
+            </section>
+
+            <!-- 4. Control Algorithms -->
+            <section id="control" class="tech-section">
+                <h3>4. Control Algorithms</h3>
+                <p>The Arduino implements a PID velocity controller to ramp motors smoothly, preventing jerk which
+                    creates motion artifacts in the EEG signal.</p>
+
+                <div class="code-block">
+                    <pre><code>// Arduino PID Implementation (Simplified)
+double Kp = 2.0, Ki = 5.0, Kd = 1.0;
+
+void computePID() {
+    double error = targetVelocity - currentVelocity;
+    integral += error * dt;
+    double derivative = (error - lastError) / dt;
+    
+    // Anti-windup
+    if (integral > MAX_INT) integral = MAX_INT;
+    
+    output = Kp*error + Ki*integral + Kd*derivative;
+    lastError = error;
+}
+</code></pre>
+                </div>
+
+                <h4>Watchdog Timer</h4>
+                <p>If the Raspberry Pi ("Brain") crashes or freezes, the wheelchair must stop. The Arduino expects a
+                    "Keep-Alive" byte every 500ms.</p>
+                <div class="diagram-container">
+                    <pre class="mermaid">
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> Active : Command Received
+    Active --> Active : Heartbeat OK
+    Active --> EmergencyStop : Heartbeat Timeout (>500ms)
+    EmergencyStop --> Idle : Manual Reset
+                    </pre>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
