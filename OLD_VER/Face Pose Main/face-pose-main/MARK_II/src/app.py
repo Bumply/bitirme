@@ -211,6 +211,9 @@ class WheelchairApp:
     
     def _process_frame(self):
         """Process current frame (called by timer in main thread)"""
+        # DEBUG: Set to True to skip MediaPipe and test if camera works
+        DEBUG_SKIP_MEDIAPIPE = True
+        
         # Get latest frame from camera thread (non-blocking)
         frame, frame_id = self.camera_thread.get_frame()
         
@@ -221,7 +224,10 @@ class WheelchairApp:
         display = cv2.flip(frame, 1)
         self.window.update_frame(display)
         
-        # Skip processing if same frame or already processing
+        # Skip processing if debug mode or same frame or already processing
+        if DEBUG_SKIP_MEDIAPIPE:
+            return  # Skip all MediaPipe processing for testing
+        
         if frame_id == self.last_frame_id or self.is_processing:
             return
         
