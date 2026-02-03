@@ -23,6 +23,7 @@ COLORS = {
 }
 
 # Main stylesheet
+# Use fonts available on Raspberry Pi OS (DejaVu, Liberation, Noto are pre-installed)
 DARK_THEME_STYLESHEET = f"""
 /* Main Window */
 QMainWindow {{
@@ -32,7 +33,7 @@ QMainWindow {{
 QWidget {{
     background-color: {COLORS['background']};
     color: {COLORS['text']};
-    font-family: 'Segoe UI', 'Roboto', sans-serif;
+    font-family: 'DejaVu Sans', 'Liberation Sans', 'Noto Sans', 'FreeSans', sans-serif;
     font-size: 14px;
 }}
 
@@ -46,6 +47,7 @@ QPushButton {{
     font-size: 16px;
     font-weight: bold;
     min-height: 50px;
+    font-family: 'DejaVu Sans', 'Liberation Sans', 'Noto Sans', 'FreeSans', sans-serif;
 }}
 
 QPushButton:hover {{
@@ -82,27 +84,32 @@ QPushButton[class="danger"]:hover {{
     background-color: #8a2444;
 }}
 
-/* Labels */
+/* Labels - explicit settings for Raspberry Pi compatibility */
 QLabel {{
     color: {COLORS['text']};
     font-size: 14px;
+    background-color: transparent;
+    font-family: 'DejaVu Sans', 'Liberation Sans', 'Noto Sans', 'FreeSans', sans-serif;
 }}
 
 QLabel[class="title"] {{
     font-size: 20px;
     font-weight: bold;
     color: {COLORS['text']};
+    background-color: transparent;
 }}
 
 QLabel[class="subtitle"] {{
     font-size: 16px;
     color: {COLORS['text_secondary']};
+    background-color: transparent;
 }}
 
 QLabel[class="status"] {{
     font-size: 12px;
     color: {COLORS['text_secondary']};
     padding: 5px;
+    background-color: transparent;
 }}
 
 /* Frames and Containers */
@@ -127,6 +134,7 @@ QProgressBar {{
     text-align: center;
     color: {COLORS['text']};
     font-weight: bold;
+    font-family: 'DejaVu Sans', 'Liberation Sans', 'Noto Sans', 'FreeSans', sans-serif;
 }}
 
 QProgressBar::chunk {{
@@ -143,6 +151,7 @@ QComboBox {{
     padding: 10px 15px;
     min-height: 40px;
     font-size: 14px;
+    font-family: 'DejaVu Sans', 'Liberation Sans', 'Noto Sans', 'FreeSans', sans-serif;
 }}
 
 QComboBox:hover {{
@@ -159,6 +168,7 @@ QComboBox QAbstractItemView {{
     color: {COLORS['text']};
     selection-background-color: {COLORS['primary']};
     border: 1px solid {COLORS['border']};
+    font-family: 'DejaVu Sans', 'Liberation Sans', 'Noto Sans', 'FreeSans', sans-serif;
 }}
 
 /* Scroll Area */
@@ -173,6 +183,13 @@ QStatusBar {{
     color: {COLORS['text_secondary']};
     border-top: 1px solid {COLORS['border']};
     font-size: 12px;
+    font-family: 'DejaVu Sans', 'Liberation Sans', 'Noto Sans', 'FreeSans', sans-serif;
+}}
+
+QStatusBar QLabel {{
+    color: {COLORS['text_secondary']};
+    font-family: 'DejaVu Sans', 'Liberation Sans', 'Noto Sans', 'FreeSans', sans-serif;
+    background-color: transparent;
 }}
 
 /* Group Box */
