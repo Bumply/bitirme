@@ -202,25 +202,20 @@ class CameraThread(QThread):
         Capture a single frame
         
         Returns:
-            BGR frame or None on failure
+            Frame or None on failure
         """
         try:
             if self.use_picamera and self.picamera:
-                # PiCamera2 capture - returns RGB format by default
+                # PiCamera2 capture - just return raw frame for now (testing)
                 frame = self.picamera.capture_array()
                 
                 if frame is None:
                     return None
                 
-                # PiCamera2 default format outputs RGB, convert to BGR for OpenCV
-                # Handle both 3-channel and 4-channel outputs
-                if len(frame.shape) == 3:
-                    if frame.shape[2] == 4:
-                        # 4 channels (XRGB/XBGR) - take first 3 and swap R/B
-                        frame = cv2.cvtColor(frame[:, :, :3], cv2.COLOR_RGB2BGR)
-                    elif frame.shape[2] == 3:
-                        # 3 channels (RGB) - swap to BGR
-                        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                # DEBUG: Skip color conversion entirely to test if it's causing timeout
+                # Just take first 3 channels if 4 channels
+                if len(frame.shape) == 3 and frame.shape[2] == 4:
+                    frame = frame[:, :, :3]
                 
                 return frame
             
