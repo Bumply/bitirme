@@ -147,18 +147,19 @@ class CameraThread(QThread):
             
             self.picamera = Picamera2()
             
-            # Use XRGB8888 format which is more reliable on Pi Camera v1 (OV5647)
-            # and configure buffer count to prevent frame drops
+            # Use XBGR8888 format - this is the native format for OV5647
+            # XBGR means [B, G, R, X] in memory - already BGR order!
             config = self.picamera.create_preview_configuration(
-                main={"size": (self.width, self.height), "format": "XRGB8888"},
-                buffer_count=4,  # More buffers to prevent timeout
-                queue=True
+                main={"size": (self.width, self.height), "format": "XBGR8888"},
+                buffer_count=6,  # More buffers to prevent timeout during processing
+                queue=False  # Drop frames if we can't keep up (prevents timeout)
             )
             self.picamera.configure(config)
             self.picamera.start()
             
             self.use_picamera = True
-            self.picamera_format = "XRGB8888"
+            self.picamera_format = "XBGR8888"
+            print(f"PiCamera2 initialized with XBGR8888 format")
             return True
             
         except ImportError:
@@ -178,14 +179,15 @@ class CameraThread(QThread):
                 self.picamera = Picamera2()
                 config = self.picamera.create_preview_configuration(
                     main={"size": (self.width, self.height), "format": "RGB888"},
-                    buffer_count=4,
-                    queue=True
+                    buffer_count=6,
+                    queue=False
                 )
                 self.picamera.configure(config)
                 self.picamera.start()
                 
                 self.use_picamera = True
                 self.picamera_format = "RGB888"
+                print(f"PiCamera2 initialized with RGB888 format (fallback)")
                 return True
             except Exception as e2:
                 print(f"PiCamera2 fallback error: {e2}")
@@ -200,25 +202,27 @@ class CameraThread(QThread):
         """
         try:
             if self.use_picamera and self.picamera:
-                # PiCamera2 capture with timeout to prevent hanging
+                # PiCamera2 capture
                 frame = self.picamera.capture_array()
                 
                 if frame is None:
                     return None
                 
                 # Handle different formats
-                if self.picamera_format == "XRGB8888":
-                    # XRGB8888 is 4 channels: X, R, G, B (or sometimes B, G, R, X)
-                    # Extract RGB channels and convert to BGR for OpenCV
-                    if frame.shape[2] == 4:
-                        # Try both orderings - check which one looks right
-                        # Standard XRGB: channels are [X, R, G, B]
-                        # But on Pi it might be [B, G, R, X]
-                        # Convert to BGR by taking channels in reverse order
-                        frame = frame[:, :, 2::-1]  # Take channels 2,1,0 (skip channel 3)
+                if self.picamera_format == "XBGR8888":
+                    # XBGR8888 means [B, G, R, X] in memory order
+                    # Take first 3 channels to get BGR (OpenCV format)
+                    if len(frame.shape) == 3 and frame.shape[2] == 4:
+                        frame = frame[:, :, :3].copy()  # Take B,G,R channels, copy for contiguous memory
+                    
+                elif self.picamera_format == "XRGB8888":
+                    # XRGB8888 is [R, G, B, X] - need to swap R and B
+                    if len(frame.shape) == 3 and frame.shape[2] == 4:
+                        frame = frame[:, :, 2::-1].copy()  # Reverse RGB to BGR
+                        
                 elif self.picamera_format == "RGB888":
                     # RGB888 - swap R and B channels to get BGR
-                    frame = frame[:, :, ::-1]  # Reverse channel order
+                    frame = frame[:, :, ::-1].copy()  # Reverse channel order
                 
                 return frame
             
