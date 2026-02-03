@@ -137,7 +137,7 @@ class CameraThread(QThread):
     
     def _try_picamera(self) -> bool:
         """
-        Try to initialize PiCamera2
+        Try to initialize PiCamera2 with the simplest possible configuration
         
         Returns:
             True if successful
@@ -147,51 +147,33 @@ class CameraThread(QThread):
             
             self.picamera = Picamera2()
             
-            # Use XBGR8888 format - this is the native format for OV5647
-            # XBGR means [B, G, R, X] in memory - already BGR order!
+            # Use the simplest possible configuration
+            # Let PiCamera2 choose the best format automatically
             config = self.picamera.create_preview_configuration(
-                main={"size": (self.width, self.height), "format": "XBGR8888"},
-                buffer_count=6,  # More buffers to prevent timeout during processing
-                queue=False  # Drop frames if we can't keep up (prevents timeout)
+                main={"size": (self.width, self.height)}
             )
             self.picamera.configure(config)
             self.picamera.start()
             
+            # Give camera time to warm up
+            import time
+            time.sleep(0.5)
+            
             self.use_picamera = True
-            self.picamera_format = "XBGR8888"
-            print(f"PiCamera2 initialized with XBGR8888 format")
+            print(f"PiCamera2 initialized successfully")
             return True
             
         except ImportError:
-            # PiCamera2 not installed
+            print("PiCamera2 not installed")
             return False
         except Exception as e:
-            print(f"PiCamera2 init error: {e}")
-            # Try fallback with RGB888
-            try:
-                if self.picamera:
-                    try:
-                        self.picamera.close()
-                    except:
-                        pass
-                
-                from picamera2 import Picamera2
-                self.picamera = Picamera2()
-                config = self.picamera.create_preview_configuration(
-                    main={"size": (self.width, self.height), "format": "RGB888"},
-                    buffer_count=6,
-                    queue=False
-                )
-                self.picamera.configure(config)
-                self.picamera.start()
-                
-                self.use_picamera = True
-                self.picamera_format = "RGB888"
-                print(f"PiCamera2 initialized with RGB888 format (fallback)")
-                return True
-            except Exception as e2:
-                print(f"PiCamera2 fallback error: {e2}")
-                return False
+            print(f"PiCamera2 error: {e}")
+            if self.picamera:
+                try:
+                    self.picamera.close()
+                except:
+                    pass
+            return False
     
     def _capture_frame(self) -> Optional[np.ndarray]:
         """
@@ -202,32 +184,26 @@ class CameraThread(QThread):
         """
         try:
             if self.use_picamera and self.picamera:
-                # PiCamera2 capture
+                # PiCamera2 capture - returns RGB format by default
                 frame = self.picamera.capture_array()
                 
                 if frame is None:
                     return None
                 
-                # Handle different formats
-                if self.picamera_format == "XBGR8888":
-                    # XBGR8888 means [B, G, R, X] in memory order
-                    # Take first 3 channels to get BGR (OpenCV format)
-                    if len(frame.shape) == 3 and frame.shape[2] == 4:
-                        frame = frame[:, :, :3].copy()  # Take B,G,R channels, copy for contiguous memory
-                    
-                elif self.picamera_format == "XRGB8888":
-                    # XRGB8888 is [R, G, B, X] - need to swap R and B
-                    if len(frame.shape) == 3 and frame.shape[2] == 4:
-                        frame = frame[:, :, 2::-1].copy()  # Reverse RGB to BGR
-                        
-                elif self.picamera_format == "RGB888":
-                    # RGB888 - swap R and B channels to get BGR
-                    frame = frame[:, :, ::-1].copy()  # Reverse channel order
+                # PiCamera2 default format outputs RGB, convert to BGR for OpenCV
+                # Handle both 3-channel and 4-channel outputs
+                if len(frame.shape) == 3:
+                    if frame.shape[2] == 4:
+                        # 4 channels (XRGB/XBGR) - take first 3 and swap R/B
+                        frame = cv2.cvtColor(frame[:, :, :3], cv2.COLOR_RGB2BGR)
+                    elif frame.shape[2] == 3:
+                        # 3 channels (RGB) - swap to BGR
+                        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
                 
                 return frame
             
             elif self.capture and self.capture.isOpened():
-                # OpenCV capture
+                # OpenCV capture - already BGR
                 ret, frame = self.capture.read()
                 if ret and frame is not None:
                     return frame
