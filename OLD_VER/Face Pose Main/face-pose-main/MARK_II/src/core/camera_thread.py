@@ -145,37 +145,24 @@ class CameraThread(QThread):
             from picamera2 import Picamera2
             
             self.picamera = Picamera2()
-            # Use BGR888 format directly to match OpenCV's native format
-            # This prevents the need for color conversion and fixes blue tint issues
+            # Use RGB888 format - this is the most reliable format for Pi Camera
+            # We'll convert to BGR for OpenCV compatibility in _capture_frame
             config = self.picamera.create_preview_configuration(
-                main={"size": (self.width, self.height), "format": "BGR888"}
+                main={"size": (self.width, self.height), "format": "RGB888"}
             )
             self.picamera.configure(config)
             self.picamera.start()
             
             self.use_picamera = True
-            self.picamera_format = "BGR888"
+            self.picamera_format = "RGB888"
             return True
             
         except ImportError:
             # PiCamera2 not installed
             return False
         except Exception as e:
-            # PiCamera2 failed - try with RGB888 as fallback
-            try:
-                self.picamera = Picamera2()
-                config = self.picamera.create_preview_configuration(
-                    main={"size": (self.width, self.height), "format": "RGB888"}
-                )
-                self.picamera.configure(config)
-                self.picamera.start()
-                
-                self.use_picamera = True
-                self.picamera_format = "RGB888"
-                return True
-            except Exception:
-                # PiCamera2 failed completely
-                return False
+            # PiCamera2 failed completely
+            return False
     
     def _capture_frame(self) -> Optional[np.ndarray]:
         """

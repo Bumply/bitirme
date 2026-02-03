@@ -183,12 +183,13 @@ class CameraWidget(QWidget):
         Convert frame to QPixmap and display
         
         Args:
-            frame: BGR frame to display
+            frame: BGR frame from camera_thread (already converted from PiCamera2's RGB888)
         """
         try:
-            # Convert BGR to RGB
+            h, w, ch = frame.shape
+            
+            # Convert BGR (OpenCV format) to RGB (Qt format) for display
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            h, w, ch = rgb_frame.shape
             
             # Create QImage
             bytes_per_line = ch * w
