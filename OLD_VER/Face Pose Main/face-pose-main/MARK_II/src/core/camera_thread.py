@@ -206,16 +206,18 @@ class CameraThread(QThread):
         """
         try:
             if self.use_picamera and self.picamera:
-                # PiCamera2 capture - just return raw frame for now (testing)
+                # PiCamera2 capture with explicit copy to avoid buffer issues
                 frame = self.picamera.capture_array()
                 
                 if frame is None:
                     return None
                 
-                # DEBUG: Skip color conversion entirely to test if it's causing timeout
-                # Just take first 3 channels if 4 channels
+                # Make a complete copy immediately to release PiCamera2's buffer
                 if len(frame.shape) == 3 and frame.shape[2] == 4:
-                    frame = frame[:, :, :3]
+                    # 4 channels - take first 3 with copy
+                    frame = np.ascontiguousarray(frame[:, :, :3])
+                else:
+                    frame = np.ascontiguousarray(frame)
                 
                 return frame
             
