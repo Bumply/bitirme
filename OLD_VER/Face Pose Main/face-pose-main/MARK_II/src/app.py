@@ -82,10 +82,9 @@ class WheelchairApp:
         self.process_timer = QTimer()
         self.process_timer.timeout.connect(self._process_frame)
         
-        # Current frame buffer
-        self.current_frame = None
-        self.is_processing = False  # Flag to prevent processing overlap
-        self.display_frame = None  # Separate buffer for display only
+        # Frame tracking
+        self.last_frame_id = -1  # Track which frame we last processed
+        self.is_processing = False
     
     def initialize(self) -> bool:
         """
@@ -133,7 +132,7 @@ class WheelchairApp:
                 height=camera_config.get('resolution', {}).get('height', 480),
                 target_fps=camera_config.get('fps', 30)
             )
-            self.camera_thread.frame_ready.connect(self._on_frame_received)
+            # Only connect error signal - we poll for frames directly
             self.camera_thread.camera_error.connect(self._on_camera_error)
             
             # Initialize Arduino thread (disabled for Windows testing)
@@ -210,34 +209,27 @@ class WheelchairApp:
         
         return exit_code
     
-    def _on_frame_received(self, frame):
-        """Handle new frame from camera thread"""
-        # Store frame for processing (will be consumed by _process_frame)
-        if not self.is_processing:  # Only update if not currently processing
-            self.current_frame = frame
-        # Always update display frame for smooth preview
-        self.display_frame = frame
-    
     def _process_frame(self):
         """Process current frame (called by timer in main thread)"""
-        # Show display frame even if not processing
-        if self.display_frame is not None:
-            display = cv2.flip(self.display_frame, 1)
-            self.window.update_frame(display)
+        # Get latest frame from camera thread (non-blocking)
+        frame, frame_id = self.camera_thread.get_frame()
         
-        if self.current_frame is None:
+        if frame is None:
             return
         
-        if self.is_processing:
-            return  # Skip if already processing
+        # Always update display for smooth preview
+        display = cv2.flip(frame, 1)
+        self.window.update_frame(display)
         
+        # Skip processing if same frame or already processing
+        if frame_id == self.last_frame_id or self.is_processing:
+            return
+        
+        self.last_frame_id = frame_id
         self.is_processing = True
         
         try:
-            frame = self.current_frame
-            self.current_frame = None  # Clear so we get fresh frame next time
-            
-            # Mirror the frame horizontally (so turning right moves wheelchair right)
+            # Mirror the frame horizontally
             frame = cv2.flip(frame, 1)
             
             # Process face

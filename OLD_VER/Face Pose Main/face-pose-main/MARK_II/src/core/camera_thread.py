@@ -7,6 +7,7 @@ from PyQt5.QtCore import QThread, pyqtSignal
 import cv2
 import numpy as np
 import time
+import threading
 from typing import Optional
 
 
@@ -14,11 +15,10 @@ class CameraThread(QThread):
     """
     Background thread for camera capture
     
-    Emits frames as Qt signals for GUI update
+    Uses a thread-safe frame buffer instead of signals to avoid blocking
     """
     
-    # Signals
-    frame_ready = pyqtSignal(np.ndarray)  # Emits BGR frame
+    # Signals (only for status, not frame data)
     camera_error = pyqtSignal(str)        # Emits error message
     fps_updated = pyqtSignal(float)       # Emits current FPS
     
@@ -48,6 +48,11 @@ class CameraThread(QThread):
         self.use_picamera = False
         self.picamera = None
         
+        # Thread-safe frame buffer
+        self._frame_lock = threading.Lock()
+        self._latest_frame = None
+        self._frame_id = 0  # Increment on each new frame
+        
         # Statistics
         self.frame_count = 0
         self.last_fps_time = time.time()
@@ -56,6 +61,18 @@ class CameraThread(QThread):
         # Error recovery
         self.consecutive_failures = 0
         self.max_failures = 10
+    
+    def get_frame(self) -> tuple:
+        """
+        Get the latest frame in a thread-safe way
+        
+        Returns:
+            (frame, frame_id) tuple, or (None, -1) if no frame available
+        """
+        with self._frame_lock:
+            if self._latest_frame is not None:
+                return self._latest_frame.copy(), self._frame_id
+            return None, -1
     
     def run(self):
         """Main thread loop - captures frames continuously"""
@@ -71,7 +88,11 @@ class CameraThread(QThread):
                 frame = self._capture_frame()
                 
                 if frame is not None:
-                    self.frame_ready.emit(frame)
+                    # Store frame in thread-safe buffer (non-blocking)
+                    with self._frame_lock:
+                        self._latest_frame = frame
+                        self._frame_id += 1
+                    
                     self.frame_count += 1
                     self.consecutive_failures = 0
                 else:
@@ -87,8 +108,7 @@ class CameraThread(QThread):
                     self.frame_count = 0
                     self.last_fps_time = current_time
                 
-                # Small delay to prevent CPU spinning
-                # With buffer_count=4 in PiCamera2, we don't need aggressive rate limiting
+                # Minimal delay - just yield to other threads
                 time.sleep(0.001)
                 
             except Exception as e:
