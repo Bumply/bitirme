@@ -232,8 +232,16 @@ class WheelchairApp:
             # Mirror the frame horizontally
             frame = cv2.flip(frame, 1)
             
-            # Process face
-            result = self.face_processor.process(frame)
+            # Convert to RGB for MediaPipe (PiCamera2 outputs BGR from XBGR8888)
+            # MediaPipe expects RGB input
+            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            
+            # Process face with RGB frame
+            result = self.face_processor.process(rgb_frame)
+            
+            # Debug: Log face detection status
+            if result['face_detected']:
+                print(f"Face detected! Pitch: {result['pitch']:.1f}, Yaw: {result['yaw']:.1f}")
             
             # Update GUI with processed frame
             self.window.update_face_data(
