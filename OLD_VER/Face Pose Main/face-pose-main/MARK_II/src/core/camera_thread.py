@@ -87,8 +87,9 @@ class CameraThread(QThread):
                     self.frame_count = 0
                     self.last_fps_time = current_time
                 
-                # Frame rate limiting
-                time.sleep(self.frame_delay)
+                # Small delay to prevent CPU spinning
+                # With buffer_count=4 in PiCamera2, we don't need aggressive rate limiting
+                time.sleep(0.001)
                 
             except Exception as e:
                 self.camera_error.emit(f"Capture error: {e}")
@@ -145,24 +146,50 @@ class CameraThread(QThread):
             from picamera2 import Picamera2
             
             self.picamera = Picamera2()
-            # Use RGB888 format - this is the most reliable format for Pi Camera
-            # We'll convert to BGR for OpenCV compatibility in _capture_frame
+            
+            # Use XRGB8888 format which is more reliable on Pi Camera v1 (OV5647)
+            # and configure buffer count to prevent frame drops
             config = self.picamera.create_preview_configuration(
-                main={"size": (self.width, self.height), "format": "RGB888"}
+                main={"size": (self.width, self.height), "format": "XRGB8888"},
+                buffer_count=4,  # More buffers to prevent timeout
+                queue=True
             )
             self.picamera.configure(config)
             self.picamera.start()
             
             self.use_picamera = True
-            self.picamera_format = "RGB888"
+            self.picamera_format = "XRGB8888"
             return True
             
         except ImportError:
             # PiCamera2 not installed
             return False
         except Exception as e:
-            # PiCamera2 failed completely
-            return False
+            print(f"PiCamera2 init error: {e}")
+            # Try fallback with RGB888
+            try:
+                if self.picamera:
+                    try:
+                        self.picamera.close()
+                    except:
+                        pass
+                
+                from picamera2 import Picamera2
+                self.picamera = Picamera2()
+                config = self.picamera.create_preview_configuration(
+                    main={"size": (self.width, self.height), "format": "RGB888"},
+                    buffer_count=4,
+                    queue=True
+                )
+                self.picamera.configure(config)
+                self.picamera.start()
+                
+                self.use_picamera = True
+                self.picamera_format = "RGB888"
+                return True
+            except Exception as e2:
+                print(f"PiCamera2 fallback error: {e2}")
+                return False
     
     def _capture_frame(self) -> Optional[np.ndarray]:
         """
@@ -173,12 +200,26 @@ class CameraThread(QThread):
         """
         try:
             if self.use_picamera and self.picamera:
-                # PiCamera2 capture
+                # PiCamera2 capture with timeout to prevent hanging
                 frame = self.picamera.capture_array()
-                # Only convert if we're using RGB888 format (fallback mode)
-                if hasattr(self, 'picamera_format') and self.picamera_format == "RGB888":
-                    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-                # BGR888 format is already in correct format for OpenCV
+                
+                if frame is None:
+                    return None
+                
+                # Handle different formats
+                if self.picamera_format == "XRGB8888":
+                    # XRGB8888 is 4 channels: X, R, G, B (or sometimes B, G, R, X)
+                    # Extract RGB channels and convert to BGR for OpenCV
+                    if frame.shape[2] == 4:
+                        # Try both orderings - check which one looks right
+                        # Standard XRGB: channels are [X, R, G, B]
+                        # But on Pi it might be [B, G, R, X]
+                        # Convert to BGR by taking channels in reverse order
+                        frame = frame[:, :, 2::-1]  # Take channels 2,1,0 (skip channel 3)
+                elif self.picamera_format == "RGB888":
+                    # RGB888 - swap R and B channels to get BGR
+                    frame = frame[:, :, ::-1]  # Reverse channel order
+                
                 return frame
             
             elif self.capture and self.capture.isOpened():
@@ -189,7 +230,8 @@ class CameraThread(QThread):
             
             return None
             
-        except Exception:
+        except Exception as e:
+            print(f"Capture error: {e}")
             return None
     
     def _attempt_reconnect(self):
