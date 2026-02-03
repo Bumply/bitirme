@@ -164,25 +164,36 @@ class CameraThread(QThread):
         """
         try:
             from picamera2 import Picamera2
+            from libcamera import controls
             
             self.picamera = Picamera2()
             
             # Use simple configuration with buffer settings to prevent timeout
-            # buffer_count=4 gives enough buffers, queue=False drops old frames
             config = self.picamera.create_preview_configuration(
                 main={"size": (self.width, self.height)},
-                buffer_count=4,
+                buffer_count=6,  # More buffers for stability
                 queue=False  # Drop frames if processing can't keep up
             )
             self.picamera.configure(config)
+            
+            # Disable auto-exposure and use fixed settings
+            # This prevents the camera from adjusting when you move, which causes power spikes
+            self.picamera.set_controls({
+                "AeEnable": False,  # Disable auto-exposure
+                "ExposureTime": 20000,  # Fixed exposure time (20ms)
+                "AnalogueGain": 2.0,  # Fixed gain
+                "AwbEnable": False,  # Disable auto white balance
+                "ColourGains": (1.5, 1.5),  # Fixed white balance
+            })
+            
             self.picamera.start()
             
-            # Give camera time to warm up
+            # Give camera time to warm up with fixed settings
             import time
-            time.sleep(0.5)
+            time.sleep(1.0)
             
             self.use_picamera = True
-            print(f"PiCamera2 initialized successfully")
+            print(f"PiCamera2 initialized with FIXED exposure settings")
             return True
             
         except ImportError:
