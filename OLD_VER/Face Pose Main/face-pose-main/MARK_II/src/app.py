@@ -84,6 +84,8 @@ class WheelchairApp:
         
         # Current frame buffer
         self.current_frame = None
+        self.is_processing = False  # Flag to prevent processing overlap
+        self.display_frame = None  # Separate buffer for display only
     
     def initialize(self) -> bool:
         """
@@ -188,8 +190,9 @@ class WheelchairApp:
         if self.arduino_thread:
             self.arduino_thread.start()
         
-        # Start processing timer (20ms = 50 FPS max processing)
-        self.process_timer.start(20)
+        # Start processing timer (100ms = 10 FPS max processing)
+        # MediaPipe is slow on Pi, so we process at a lower rate
+        self.process_timer.start(100)
         
         # Show window
         self.window.show()
@@ -209,44 +212,66 @@ class WheelchairApp:
     
     def _on_frame_received(self, frame):
         """Handle new frame from camera thread"""
-        self.current_frame = frame
+        # Store frame for processing (will be consumed by _process_frame)
+        if not self.is_processing:  # Only update if not currently processing
+            self.current_frame = frame
+        # Always update display frame for smooth preview
+        self.display_frame = frame
     
     def _process_frame(self):
         """Process current frame (called by timer in main thread)"""
+        # Show display frame even if not processing
+        if self.display_frame is not None:
+            display = cv2.flip(self.display_frame, 1)
+            self.window.update_frame(display)
+        
         if self.current_frame is None:
             return
         
-        frame = self.current_frame
+        if self.is_processing:
+            return  # Skip if already processing
         
-        # Mirror the frame horizontally (so turning right moves wheelchair right)
-        frame = cv2.flip(frame, 1)
+        self.is_processing = True
         
-        # Process face
-        result = self.face_processor.process(frame)
-        
-        # Update GUI
-        self.window.update_frame(frame)
-        self.window.update_face_data(
-            result['face_box'],
-            result['pitch'],
-            result['yaw'],
-            result['face_detected'],
-            result['brow_ratio']
-        )
-        
-        # Handle gestures for control toggle
-        if result['brow_raised'] and time.time() - self.last_gesture_time > self.gesture_cooldown:
-            if self.logger:
-                self.logger.info(f"Eyebrow raise detected! Toggling control. Ratio: {result['brow_ratio']:.1f}")
-            self._toggle_control()
-            self.last_gesture_time = time.time()
-        
-        # Update wheelchair control
-        if self.control_enabled and result['face_detected']:
-            speed, position = self._calculate_control(result['pitch'], result['yaw'])
+        try:
+            frame = self.current_frame
+            self.current_frame = None  # Clear so we get fresh frame next time
             
-            if self.arduino_thread:
-                self.arduino_thread.set_command(speed, position)
+            # Mirror the frame horizontally (so turning right moves wheelchair right)
+            frame = cv2.flip(frame, 1)
+            
+            # Process face
+            result = self.face_processor.process(frame)
+            
+            # Update GUI with processed frame
+            self.window.update_face_data(
+                result['face_box'],
+                result['pitch'],
+                result['yaw'],
+                result['face_detected'],
+                result['brow_ratio']
+            )
+            
+            # Handle gestures for control toggle
+            if result['brow_raised'] and time.time() - self.last_gesture_time > self.gesture_cooldown:
+                if self.logger:
+                    self.logger.info(f"Eyebrow raise detected! Toggling control. Ratio: {result['brow_ratio']:.1f}")
+                self._toggle_control()
+                self.last_gesture_time = time.time()
+            
+            # Update wheelchair control
+            if self.control_enabled and result['face_detected']:
+                speed, position = self._calculate_control(result['pitch'], result['yaw'])
+                
+                if self.arduino_thread:
+                    self.arduino_thread.set_command(speed, position)
+        
+        except Exception as e:
+            if self.logger:
+                self.logger.error(f"Frame processing error: {e}")
+        
+        finally:
+            self.is_processing = False
     
     def _calculate_control(self, pitch: float, yaw: float) -> tuple:
         """

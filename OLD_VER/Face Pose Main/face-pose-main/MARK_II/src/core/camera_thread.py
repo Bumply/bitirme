@@ -147,10 +147,12 @@ class CameraThread(QThread):
             
             self.picamera = Picamera2()
             
-            # Use the simplest possible configuration
-            # Let PiCamera2 choose the best format automatically
+            # Use simple configuration with buffer settings to prevent timeout
+            # buffer_count=4 gives enough buffers, queue=False drops old frames
             config = self.picamera.create_preview_configuration(
-                main={"size": (self.width, self.height)}
+                main={"size": (self.width, self.height)},
+                buffer_count=4,
+                queue=False  # Drop frames if processing can't keep up
             )
             self.picamera.configure(config)
             self.picamera.start()
