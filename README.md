@@ -5,36 +5,13 @@
   <img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge" />
 </p>
 
-<h1 align="center">NeuroDrive</h1>
-<h3 align="center">Think it. Drive it.</h3>
+# NeuroDrive
 
-<p align="center">
-  A 3-node Brain-Computer Interface that translates <b>motor imagery EEG signals</b> into real-time wheelchair movement commands.
-</p>
-
----
-
-## How It Works
-
-```
-  YOUR BRAIN                    NEURODRIVE                         WHEELCHAIR
- ┌──────────┐     ┌──────────────────────────────────────────┐    ┌──────────┐
- │          │     │                                          │    │          │
- │  Imagine  │────>│  EEG Cap ──> DSP ──> EEGNet ──> Safety  │───>│  Motors  │
- │  moving   │     │  (8ch)     (filter)  (ML)     (3-layer) │    │  move!   │
- │          │     │                                          │    │          │
- └──────────┘     └──────────────────────────────────────────┘    └──────────┘
-```
-
-> Imagine moving your **right hand** and the wheelchair steers **left**.
-> Imagine moving your **feet** and it drives **forward**.
-> No joystick. No buttons. Just thought.
+3-node Brain-Computer Interface system. Reads motor imagery EEG, classifies it with EEGNet on a Coral Edge TPU, and drives a wheelchair. No joystick needed.
 
 ---
 
 ## Architecture
-
-The system is split across 3 dedicated nodes, each optimized for its role:
 
 ```mermaid
 graph LR
@@ -62,73 +39,57 @@ graph LR
     style NODE3 fill:#1a1a2e,stroke:#16c79a,color:#fff
 ```
 
-| Node | Hardware | Role | Key Specs |
-|:----:|:--------:|:-----|:----------|
-| **1** | Coral Dev Board Mini | EEG + ML Inference | 8ch 24-bit ADC, Edge TPU, ~4ms inference |
-| **2** | Raspberry Pi 5 | Dashboard + Safety | Web UI, 3s heartbeat timeout, E-stop relay |
-| **3** | Arduino Mega 2560 | Motor Control | 6-state FSM, smooth PWM ramp, hardware E-stop ISR |
+| Node | Hardware | Role | Specs |
+|:----:|:--------:|:-----|:------|
+| **1** | Coral Dev Board Mini | EEG acquisition + ML inference | 8ch 24-bit ADC, Edge TPU, ~4ms inference |
+| **2** | Raspberry Pi 5 | Dashboard + safety relay | NiceGUI web UI, heartbeat timeout, E-stop |
+| **3** | Arduino Mega 2560 | Motor control | 6-state FSM, PWM ramp, hardware E-stop ISR |
 
 ---
 
-## Motor Imagery Commands
+## Motor Imagery Mapping
 
-| Think About | Command | Wheelchair Action | Brain Region |
-|:-----------:|:-------:|:-----------------:|:------------:|
-| Right hand | `L` | Steer Left | C4 (right motor cortex) |
-| Left hand | `R` | Steer Right | C3 (left motor cortex) |
-| Feet | `F` | Drive Forward | Cz (medial motor cortex) |
+| Imagery | Command | Action | EEG Source |
+|:-------:|:-------:|:------:|:----------:|
+| Right hand | `L` | Steer left | C4 ERD (contralateral) |
+| Left hand | `R` | Steer right | C3 ERD (contralateral) |
+| Feet | `F` | Forward | Cz ERD (medial cortex) |
 | Tongue | `S` | Stop | Broad cortical pattern |
 
-> Motor imagery activates the **opposite** hemisphere (contralateral control), which is why right hand imagery maps to left steering.
+---
+
+## Signal Pipeline
+
+```
+ADS1299 (250 SPS, 8ch) --> 50Hz Notch (IIR, Q=30) --> 8-30Hz Bandpass (Butterworth, order 4)
+    --> 1s sliding window --> EEGNet (1,684 params) --> Confidence gate (40%)
+    --> Majority vote (window=3) --> UDP command --> Safety checks --> Motor PWM
+```
 
 ---
 
-## Features
+## Safety
 
-### Signal Processing
-- 50 Hz IIR notch filter (Q=30) removes power line noise
-- 8-30 Hz Butterworth bandpass (order 4) isolates mu/beta rhythms
-- Per-channel stateful filtering at 250 SPS
-- ERD baseline estimation with exponential moving average
+Three independent layers -- any one of them can stop the wheelchair:
 
-### Machine Learning
-- **EEGNet** architecture (Lawhern et al. 2018) -- only 1,684 parameters
-- Pre-trained on BCI Competition IV-2a (8 subjects, 4-class motor imagery)
-- Personal calibration: freeze early layers, fine-tune classifier (~13 min session)
-- **Online adaptation**: high-confidence predictions become pseudo-labels for continuous learning
-- Runs on Edge TPU via int8 quantized TFLite
-
-### Safety (3-Layer System)
-
-```
-Layer 1: SOFTWARE          Layer 2: FIRMWARE           Layer 3: HARDWARE
- ┌─────────────────┐       ┌──────────────────┐       ┌──────────────────┐
- │ Confidence gate  │       │ Serial watchdog   │       │ Physical E-stop  │
- │ Vote smoothing   │       │ Battery cutoff    │       │ button (kills     │
- │ Heartbeat timeout│       │ PWM ramp limit    │       │ power directly)  │
- │ Speed limiter    │       │ State validation   │       │                  │
- └─────────────────┘       └──────────────────┘       └──────────────────┘
-    Node 1 + 2                  Node 3                    Electrical
-```
-
-### Dashboard (Node 2)
-- Dark-theme NiceGUI web app on port 8080
-- **Drive tab**: live command display with glow effects, D-pad manual override, confidence bar, command log
-- **Calibrate tab**: guided visual cue protocol, progress tracking, before/after accuracy display
-- **Settings tab**: network, safety, serial configuration
+| Layer | Where | What |
+|:-----:|:-----:|:-----|
+| Software | Node 1 + 2 | Confidence threshold, vote smoothing, heartbeat timeout (3s), speed limiter |
+| Firmware | Node 3 | Serial watchdog (2s), battery cutoff (10.5V), PWM ramp limiting, state validation |
+| Hardware | Electrical | Physical E-stop button wired to motor driver enable -- bypasses all software |
 
 ---
 
 ## Performance
 
 | Metric | Value |
-|:-------|:------|
-| Sampling rate | 250 SPS (8 channels) |
+|:-------|------:|
+| Sampling rate | 250 SPS x 8ch |
 | Inference latency | ~4 ms (GPU) / ~2-5 ms (Edge TPU) |
 | End-to-end latency | < 10 ms |
-| Cross-subject accuracy | 43% (4-class, chance = 25%) |
-| After personal calibration | 56% SITL (expected 75-85% with real data) |
-| Inference budget | 500 ms window, 492 ms headroom |
+| Cross-subject accuracy | 43% (chance = 25%) |
+| After calibration | 56% SITL (target 75-85% real) |
+| Inference headroom | 492 ms / 500 ms budget |
 | Bench tests | 5/5 passing |
 
 ---
@@ -141,12 +102,12 @@ NeuroDrive/
 ├── node1_training.py            # EEGNet pre-training (PyTorch + CUDA)
 ├── node1_calibrate.py           # Personal fine-tuning with BN freeze
 ├── node1_inference.py           # Real-time SITL inference
-├── node1_coral.py               # Production: ADS1299 + TFLite + calibration + online adaptation
-├── node2_dashboard.py           # Pi 5 dashboard + safety + serial relay
+├── node1_coral.py               # Production: ADS1299 + TFLite + calibration + adaptation
+├── node2_dashboard.py           # Dashboard + safety + serial relay
 ├── node3_motor_control/
 │   └── node3_motor_control.ino  # Arduino state machine + ramp + E-stop
 ├── bench_test.py                # Automated test suite (5 tests)
-├── models/                      # Trained .pt and .onnx model files
+├── models/                      # Trained .pt and .onnx files
 ├── calibration_data/            # Personal EEG recordings (.npz)
 └── logs/                        # Runtime logs (gitignored)
 ```
@@ -156,81 +117,56 @@ NeuroDrive/
 ## Quick Start
 
 ```bash
-# Clone
 git clone https://github.com/Bumply/bitirme.git NeuroDrive
 cd NeuroDrive
 
-# Install dependencies (development PC with NVIDIA GPU)
+# Dependencies (dev PC with NVIDIA GPU)
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
 pip install moabb mne numpy scipy scikit-learn matplotlib onnx
 pip install nicegui pyserial
 pip install tensorflow-cpu  # TFLite export only
+
+# Run in order
+python node1_sitl_pipeline.py    # 1. Test DSP with replayed EEG
+python node1_training.py         # 2. Train EEGNet (needs GPU)
+python node1_calibrate.py        # 3. Fine-tune on subject 9
+python node1_inference.py        # 4. Real-time SITL inference
+python node2_dashboard.py        # 5. Dashboard at localhost:8080
+python bench_test.py             # 6. Run all tests
 ```
 
-### Run the pipeline step by step:
-
-```bash
-# 1. Test DSP filtering with replayed EEG data
-python node1_sitl_pipeline.py
-
-# 2. Train EEGNet on BCI Competition IV-2a dataset
-python node1_training.py
-
-# 3. Fine-tune on personal data (SITL uses subject 9)
-python node1_calibrate.py
-
-# 4. Run real-time inference in SITL mode
-python node1_inference.py
-
-# 5. Launch the dashboard (open http://localhost:8080)
-python node2_dashboard.py
-
-# 6. Run the full bench test suite
-python bench_test.py
-
-# 7. Upload Arduino sketch via Arduino IDE
-#    File: node3_motor_control/node3_motor_control.ino
-```
+Arduino sketch: `node3_motor_control/node3_motor_control.ino` -- upload via Arduino IDE.
 
 ---
 
 ## Hardware BOM
 
 <details>
-<summary><b>Node 1 -- EEG Acquisition + ML</b></summary>
+<summary><b>Node 1 -- EEG + ML</b></summary>
 
 - Google Coral Dev Board Mini (ARM + Edge TPU)
 - Portiloop PCB (ADS1299 8-channel 24-bit EEG front-end)
-- EEG electrode cap (8 channels: FC3, FC4, C3, Cz, C4, CP3, CP4, FCz)
+- EEG electrode cap (FC3, FC4, C3, Cz, C4, CP3, CP4, FCz)
 - Conductive gel + reference/ground electrodes
 
 </details>
 
 <details>
-<summary><b>Node 2 -- Dashboard + Relay</b></summary>
+<summary><b>Node 2 -- Dashboard</b></summary>
 
-- Raspberry Pi 5 (4GB+ RAM)
-- MicroSD card (32GB+)
-- WiFi (built-in, connects to Coral's AP)
+- Raspberry Pi 5 (4GB+)
+- MicroSD 32GB+
+- WiFi (built-in)
 
 </details>
 
 <details>
-<summary><b>Node 3 -- Motor Control</b></summary>
+<summary><b>Node 3 -- Motors</b></summary>
 
 - Arduino Mega 2560
-- L298N or BTS7960 motor driver
-- Emergency stop button (hardware kill switch)
-- Power relay for motor enable/disable
+- L298N or BTS7960 H-bridge driver
+- E-stop button (hardware kill switch)
 - 12V/24V battery
-
-</details>
-
-<details>
-<summary><b>Development Machine (training only)</b></summary>
-
-- Any PC with NVIDIA GPU (RTX 3060 or better)
-- Not mounted on wheelchair -- used once to train the model
 
 </details>
 
@@ -240,7 +176,7 @@ python bench_test.py
 
 ```mermaid
 gantt
-    title NeuroDrive Development Progress
+    title NeuroDrive Progress
     dateFormat YYYY-MM-DD
     axisFormat %b %d
 
@@ -276,26 +212,25 @@ gantt
 
 ## Design Decisions
 
-| Decision | Rationale |
-|:---------|:----------|
-| **PyTorch over TensorFlow** | TF 2.11+ dropped native Windows GPU. PyTorch CUDA works natively. |
-| **EEGNet (1,684 params)** | Compact, all ops supported by Edge TPU int8 quantization. |
-| **3-node separation** | Coral = real-time ML, Pi = UI/safety, Arduino = motor reliability. |
-| **Confidence + vote smoothing** | Uncertain predictions never move the wheelchair. Safety first. |
-| **Hardware E-stop** | Physical button bypasses all software. Non-negotiable for mobility. |
-| **Online adaptation** | Pseudo-label fine-tuning tracks brain drift without recalibration. |
-| **8 EEG channels** | FC3, FC4, C3, Cz, C4, CP3, CP4, FCz -- full motor cortex coverage. |
+| Decision | Why |
+|:---------|:----|
+| PyTorch over TensorFlow | TF 2.11+ dropped Windows GPU support |
+| EEGNet (1,684 params) | Small enough for Edge TPU int8 quantization |
+| 3-node split | ML needs speed, UI needs compute, motors need reliability |
+| Confidence + vote smoothing | Uncertain predictions don't move the chair |
+| Hardware E-stop | Physical button bypasses all software. Non-negotiable. |
+| Online adaptation | Pseudo-label fine-tuning tracks brain drift over time |
 
 ---
 
-## Current Status
+## Status
 
-**Software: COMPLETE** -- all code written and bench-tested in SITL mode.
+**Software: done.** All code written, validated against [portiloop-software](https://github.com/PortiloopTeam/portiloop-software), bench-tested 5/5.
 
-**Next: Hardware integration** -- Coral port (Linux), wheelchair mounting, personal calibration with real EEG.
+**Next up:** Coral hardware port (needs Linux), then wheelchair integration + real EEG calibration.
 
 ---
 
-<p align="center">
-  <i>Built with brainwaves and late nights.</i>
-</p>
+## License
+
+[MIT](LICENSE)
