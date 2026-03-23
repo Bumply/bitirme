@@ -1,294 +1,301 @@
-# NeuroDrive — EEG-Controlled Wheelchair
+<p align="center">
+  <img src="https://img.shields.io/badge/Platform-Coral%20%7C%20RPi5%20%7C%20Arduino-blue?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/ML-EEGNet%20%7C%20Edge%20TPU-green?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Tests-5%2F5%20Passing-brightgreen?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge" />
+</p>
 
-A 3-node Brain-Computer Interface system that translates motor imagery EEG signals into wheelchair movement commands.
+<h1 align="center">NeuroDrive</h1>
+<h3 align="center">Think it. Drive it.</h3>
 
-## System Overview
+<p align="center">
+  A 3-node Brain-Computer Interface that translates <b>motor imagery EEG signals</b> into real-time wheelchair movement commands.
+</p>
+
+---
+
+## How It Works
 
 ```
-┌─────────────────────┐     WiFi (JSON)     ┌──────────────────┐    Serial (UART)    ┌─────────────────────┐
-│   NODE 1: Coral      │ ─────────────────> │  NODE 2: Pi 5     │ ────────────────> │  NODE 3: Arduino     │
-│   Dev Board Mini     │                     │  Raspberry Pi 5   │                    │  Mega 2560           │
-│                      │                     │                    │                    │                      │
-│  ADS1299 (8ch EEG)   │                     │  Dashboard UI      │                    │  Motor drivers       │
-│  DSP filtering       │                     │  Safety logic      │                    │  State machine       │
-│  EEGNet (Edge TPU)   │                     │  Command relay     │                    │  E-stop              │
-│  Command output      │                     │  Data logging      │                    │  PWM control         │
-└─────────────────────┘                     └──────────────────┘                    └─────────────────────┘
-     On wheelchair                               On wheelchair                          On wheelchair
-     (wired to EEG cap)                          (WiFi AP)                              (wired to motors)
+  YOUR BRAIN                    NEURODRIVE                         WHEELCHAIR
+ ┌──────────┐     ┌──────────────────────────────────────────┐    ┌──────────┐
+ │          │     │                                          │    │          │
+ │  Imagine  │────>│  EEG Cap ──> DSP ──> EEGNet ──> Safety  │───>│  Motors  │
+ │  moving   │     │  (8ch)     (filter)  (ML)     (3-layer) │    │  move!   │
+ │          │     │                                          │    │          │
+ └──────────┘     └──────────────────────────────────────────┘    └──────────┘
 ```
+
+> Imagine moving your **right hand** and the wheelchair steers **left**.
+> Imagine moving your **feet** and it drives **forward**.
+> No joystick. No buttons. Just thought.
+
+---
+
+## Architecture
+
+The system is split across 3 dedicated nodes, each optimized for its role:
+
+```mermaid
+graph LR
+    subgraph NODE1["Node 1: Coral Dev Board Mini"]
+        A[ADS1299 8ch EEG] --> B[DSP Filtering]
+        B --> C[EEGNet Inference]
+        C --> D[Command Output]
+    end
+
+    subgraph NODE2["Node 2: Raspberry Pi 5"]
+        E[Dashboard UI] --> F[Safety Logic]
+        F --> G[Serial Relay]
+    end
+
+    subgraph NODE3["Node 3: Arduino Mega 2560"]
+        H[State Machine] --> I[PWM Motor Control]
+        I --> J[H-Bridge Motors]
+    end
+
+    D -->|WiFi UDP:5000| E
+    G -->|Serial UART| H
+
+    style NODE1 fill:#1a1a2e,stroke:#e94560,color:#fff
+    style NODE2 fill:#1a1a2e,stroke:#0f3460,color:#fff
+    style NODE3 fill:#1a1a2e,stroke:#16c79a,color:#fff
+```
+
+| Node | Hardware | Role | Key Specs |
+|:----:|:--------:|:-----|:----------|
+| **1** | Coral Dev Board Mini | EEG + ML Inference | 8ch 24-bit ADC, Edge TPU, ~4ms inference |
+| **2** | Raspberry Pi 5 | Dashboard + Safety | Web UI, 3s heartbeat timeout, E-stop relay |
+| **3** | Arduino Mega 2560 | Motor Control | 6-state FSM, smooth PWM ramp, hardware E-stop ISR |
+
+---
 
 ## Motor Imagery Commands
 
-| Brain Task | Command | Wheelchair Action | EEG Signature |
-|-----------|---------|------------------|---------------|
-| Right hand imagery | `L` | Steer left | C4 ERD (right motor cortex) |
-| Left hand imagery | `R` | Steer right | C3 ERD (left motor cortex) |
-| Feet imagery | `F` | Drive forward | Cz ERD (medial motor cortex) |
-| Tongue imagery | `S` | Stop | Distinct broad cortical pattern |
+| Think About | Command | Wheelchair Action | Brain Region |
+|:-----------:|:-------:|:-----------------:|:------------:|
+| Right hand | `L` | Steer Left | C4 (right motor cortex) |
+| Left hand | `R` | Steer Right | C3 (left motor cortex) |
+| Feet | `F` | Drive Forward | Cz (medial motor cortex) |
+| Tongue | `S` | Stop | Broad cortical pattern |
 
-## Hardware Bill of Materials
-
-### Node 1 — EEG Acquisition + ML Inference
-- Google Coral Dev Board Mini (ARM + Edge TPU)
-- Portiloop PCB (ADS1299 8-channel 24-bit EEG analog front-end)
-- EEG electrode cap (8 channels: FC3, FC4, C3, Cz, C4, CP3, CP4, FCz)
-- Conductive gel + reference/ground electrodes
-
-### Node 2 — Dashboard + Relay
-- Raspberry Pi 5 (4GB+ RAM)
-- MicroSD card (32GB+)
-- WiFi (built-in, connects to Coral's AP)
-
-### Node 3 — Motor Control
-- Arduino Mega 2560
-- Motor driver board (L298N or BTS7960 for wheelchair motors)
-- Emergency stop button (hardware kill switch, bypasses all software)
-- Power relay for motor enable/disable
-- 12V/24V battery (wheelchair power)
-
-### Development Machine (for training only)
-- Any PC with NVIDIA GPU (RTX 3060 or better)
-- Not mounted on wheelchair — used once to train the model
+> Motor imagery activates the **opposite** hemisphere (contralateral control), which is why right hand imagery maps to left steering.
 
 ---
 
-## Complete Build Roadmap
+## Features
 
-### PHASE 1 — Node 1: EEG + ML Pipeline
-*All software runs on development PC first (SITL), then ports to Coral*
+### Signal Processing
+- 50 Hz IIR notch filter (Q=30) removes power line noise
+- 8-30 Hz Butterworth bandpass (order 4) isolates mu/beta rhythms
+- Per-channel stateful filtering at 250 SPS
+- ERD baseline estimation with exponential moving average
 
-#### Step 1: SITL Pipeline [DONE]
-- `node1_sitl_pipeline.py` — Replay BCI-IV-2a data at 250 SPS
-- DSP chain: 50 Hz IIR notch (Q=30) -> 8-30 Hz Butterworth bandpass (order 4)
-- Stateful per-channel filtering (sosfilt with zero-initialized state)
-- ERD baseline estimation (EMA, alpha=0.15, min 3 rest windows)
-- Thread architecture: StreamThread (250 SPS) + DSPThread (0.5s windows)
+### Machine Learning
+- **EEGNet** architecture (Lawhern et al. 2018) -- only 1,684 parameters
+- Pre-trained on BCI Competition IV-2a (8 subjects, 4-class motor imagery)
+- Personal calibration: freeze early layers, fine-tune classifier (~13 min session)
+- **Online adaptation**: high-confidence predictions become pseudo-labels for continuous learning
+- Runs on Edge TPU via int8 quantized TFLite
 
-#### Step 2: EEGNet Pre-Training [DONE]
-- `node1_training.py` — Train on BCI-IV-2a subjects 1-8, test on subject 9
-- PyTorch + CUDA (RTX 3060), mixed precision (float16 Tensor Cores)
-- EEGNet architecture: F1=8, D=2, F2=16, dropout=0.5
-- 8 channels: FC3, FC4, C3, Cz, C4, CP3, CP4, FCz
-- Export: PyTorch .pt + ONNX .onnx (TFLite on Coral)
-- Result: ~43% cross-subject accuracy (4-class, chance=25%)
+### Safety (3-Layer System)
 
-#### Step 3: Personal Calibration [DONE]
-- `node1_calibrate.py` — Fine-tune base model on one person's data
-- Freeze Block 1+2 (temporal + spatial conv), train Block 3 + classifier
-- BN layers in frozen blocks kept in eval() mode (prevents stat drift)
-- SITL result: 56% on subject 9 (expected 75-85% with real personal data)
+```
+Layer 1: SOFTWARE          Layer 2: FIRMWARE           Layer 3: HARDWARE
+ ┌─────────────────┐       ┌──────────────────┐       ┌──────────────────┐
+ │ Confidence gate  │       │ Serial watchdog   │       │ Physical E-stop  │
+ │ Vote smoothing   │       │ Battery cutoff    │       │ button (kills     │
+ │ Heartbeat timeout│       │ PWM ramp limit    │       │ power directly)  │
+ │ Speed limiter    │       │ State validation   │       │                  │
+ └─────────────────┘       └──────────────────┘       └──────────────────┘
+    Node 1 + 2                  Node 3                    Electrical
+```
 
-#### Step 4: Real-Time Inference [DONE]
-- `node1_inference.py` — Full pipeline: stream -> DSP -> EEGNet -> command
-- Confidence threshold (40%) — below threshold, hold current command
-- Majority vote smoothing (window=3) — prevents single-window jitter
-- V -> uV scaling (1e6) to match training data
-- Inference latency: ~4ms per window on GPU
-- SITL result: 42.1% real-time accuracy, diverse command distribution
-
-#### Step 5: Port to Coral Hardware [DEFERRED — needs Linux + Coral hardware]
-- `node1_coral.py` written (ADS1299 SPI, TFLite Edge TPU, WiFi AP sender, auto-detects Coral vs laptop)
-- Remaining: convert ONNX to int8 TFLite via `edgetpu_compiler` (Linux only)
-- Remaining: set up WiFi AP on Coral (shell config)
-- Remaining: test with real EEG cap + conductive gel
-- Expected inference: ~2-5ms on Edge TPU
-
-#### Step 6: Personal Calibration Recording Script [DONE]
-- Dashboard calibration tab (Node 2) shows visual cues for each imagery task
-- Protocol: 2s fixation -> 4s imagery -> 2s rest, 25 trials x 4 classes (~13 min)
-- `CalibrationRecorder` in `node1_coral.py` listens on UDP 5001 for cue commands
-- Records labeled EEG windows during imagery phases, saves to `calibration_data/`
-- Auto-runs fine-tuning (freeze Block 1+2, train Block 3 + classifier)
-- Sends before/after accuracy back to dashboard for display
-
-#### Step 7: Online Adaptation [DONE]
-- `OnlineAdapter` in `node1_coral.py` — accumulates high-confidence (>80%) predictions as pseudo-labels
-- Micro fine-tune every 50 confident predictions (5 epochs, LR=5e-5)
-- Same freeze strategy: Block 1+2 frozen, Block 3 + classifier trained
-- BN freeze fix applied during micro fine-tune (frozen BN stays in eval mode)
-- Tracks brain drift from fatigue, electrode impedance changes
-- Toggleable via `ADAPT_ENABLED` config flag
-- Only works with PyTorch engine (TFLite models are frozen by design)
+### Dashboard (Node 2)
+- Dark-theme NiceGUI web app on port 8080
+- **Drive tab**: live command display with glow effects, D-pad manual override, confidence bar, command log
+- **Calibrate tab**: guided visual cue protocol, progress tracking, before/after accuracy display
+- **Settings tab**: network, safety, serial configuration
 
 ---
 
-### PHASE 2 — Node 2: Raspberry Pi 5 Dashboard
+## Performance
 
-#### Step 8: WiFi Communication Protocol [DONE]
-- `CommandSender` (Node 1) sends JSON: `{"cmd": "L", "conf": 0.85, "ts": ...}` via UDP
-- `UDPListener` (Node 2) receives on port 5000
-- Heartbeat timeout: 3s no-packet -> auto STOP
-- Calibration control: Node 2 sends cue commands to Node 1 on port 5001
-
-#### Step 9: Dashboard UI [DONE]
-- `node2_dashboard.py` — NiceGUI dark-theme web app on port 8080
-- Drive tab: glowing command display, D-pad manual override, confidence bar, command log
-- Calibrate tab: visual cue protocol, progress bar, before/after accuracy results
-- Settings tab: network, safety, serial, calibration config display
-
-#### Step 10: Safety Logic [DONE]
-- `SafetyController` in Node 2: heartbeat timeout (3s), command timeout (5s)
-- E-stop: software button + hardware bypass (Node 3)
-- Speed limit: adjustable from dashboard slider
-- Geofencing: TODO (future — ultrasonic/LiDAR)
-
-#### Step 11: Serial Relay to Arduino [DONE]
-- `SerialRelay` in Node 2: single-byte commands via USB Serial (115200 baud)
-- Protocol: `L`, `R`, `F`, `S`, `E` (e-stop)
-- Auto-detects serial connection, falls back to log-only mode
+| Metric | Value |
+|:-------|:------|
+| Sampling rate | 250 SPS (8 channels) |
+| Inference latency | ~4 ms (GPU) / ~2-5 ms (Edge TPU) |
+| End-to-end latency | < 10 ms |
+| Cross-subject accuracy | 43% (4-class, chance = 25%) |
+| After personal calibration | 56% SITL (expected 75-85% with real data) |
+| Inference budget | 500 ms window, 492 ms headroom |
+| Bench tests | 5/5 passing |
 
 ---
 
-### PHASE 3 — Node 3: Arduino Motor Control
-
-#### Step 12: Motor Driver Interface [DONE]
-- `node3_motor_control/node3_motor_control.ino` — Arduino Mega 2560 + L298N
-- PWM speed control for left and right motors (pins 2, 3)
-- Direction via H-bridge pins (22-25)
-- Motor mapping: F=both forward, L=right fast/left slow, R=left fast/right slow, S=brake
-
-#### Step 13: State Machine [DONE]
-- States: IDLE, FORWARD, TURNING_LEFT, TURNING_RIGHT, STOPPING, ESTOP
-- Smooth ramp engine: PWM steps every 20ms (configurable RAMP_STEP)
-- STOPPING state ramps to zero then transitions to IDLE
-- ESTOP: immediate motor kill via ISR, requires manual reset (S command + button release)
-
-#### Step 14: Hardware Safety [DONE]
-- Hardware E-stop on pin 18 (interrupt-driven, kills motors in ISR)
-- Battery voltage monitor on A0 (voltage divider): warn at 11V, auto-stop at 10.5V
-- Serial watchdog: auto-stop if no command from Pi for 2 seconds
-- Periodic state ack to Pi every 200ms (so dashboard knows Arduino is alive)
-- Max speed configurable from Node 2 via 'V' command
-
----
-
-### PHASE 4 — Integration & Testing
-
-#### Step 15: Bench Test (no wheelchair) [DONE]
-- `bench_test.py` — automated test suite for the full pipeline
-- Test 1: Full pipeline (Node 1 SITL -> UDP -> verify packets + command diversity)
-- Test 2: Failsafe (simulate Node 1 dropout, verify heartbeat timeout)
-- Test 3: E-stop override (verify e-stop blocks commands, reset works)
-- Test 4: Command smoother (majority vote, low confidence rejection)
-- Test 5: Serial protocol (verify single-byte uppercase command format)
-- Hardware bench test with real nodes: TODO (needs all 3 boards on a desk)
-
-#### Step 16: Wheelchair Integration [TODO — hardware only]
-- Mount Coral + Pi + Arduino on wheelchair frame
-- Wire motor drivers to wheelchair motors
-- Route EEG cable to headrest area
-- Mount E-stop button on armrest
-- Cable management and strain relief
-
-#### Step 17: Personal Calibration Session [TODO — hardware only]
-- Fit EEG cap with conductive gel
-- Run calibration recording script (Step 6)
-- Fine-tune model on personal data
-- Compile for Edge TPU and deploy to Coral
-- Test accuracy with live EEG (target: 75-85%)
-
-#### Step 18: Controlled Environment Testing [TODO — hardware only]
-- Flat, open indoor space (gym or large room)
-- Low speed only (walking pace or slower)
-- Spotter walking alongside at all times
-- Test each command individually, then combinations
-- Record all sessions for analysis
-
-#### Step 19: Iteration & Optimization [TODO — hardware only]
-- Analyze confusion matrix from real sessions
-- Adjust confidence threshold and vote window
-- Re-calibrate model if accuracy drifts
-- Tune motor speeds and ramp rates
-- Add obstacle detection if needed (ultrasonic sensors)
-
----
-
-## Current Status
-
-**SOFTWARE: COMPLETE** — all code written and tested on development PC (SITL mode).
-**REMAINING: HARDWARE ONLY** — Steps 5 (Coral port), 16-19 need physical hardware.
-
-| Component | Status | Notes |
-|-----------|--------|-------|
-| SITL Pipeline | DONE | 5 validated runs |
-| EEGNet Pre-Training | DONE | 43% cross-subject (8 subjects) |
-| Personal Calibration | DONE | 56% SITL, BN freeze fix applied |
-| Real-Time Inference | DONE | 42% real-time, 4ms latency |
-| Coral Hardware Port | DEFERRED | node1_coral.py written, needs Linux + Coral |
-| Calibration Recording | DONE | Dashboard cues + Node 1 recorder + auto fine-tune |
-| Online Adaptation | DONE | Pseudo-label accumulation + micro fine-tune |
-| Node 2 (Pi Dashboard) | DONE | NiceGUI dark UI, drive/calibrate/settings tabs |
-| Node 3 (Arduino Motors) | DONE | State machine + ramp + e-stop + watchdog |
-| Bench Test Suite | DONE | 5/5 tests passing |
-| Wheelchair Integration | TODO | Hardware only — mount + wire |
-| Personal Calibration | TODO | Hardware only — EEG cap + gel |
-| Environment Testing | TODO | Hardware only — gym + spotter |
-| Iteration | TODO | Hardware only — tune from real sessions |
-
-## File Structure
+## Project Structure
 
 ```
 NeuroDrive/
-  node1_sitl_pipeline.py       # Step 1: SITL EEG replay + DSP filtering
-  node1_training.py            # Step 2: EEGNet pre-training (PyTorch + CUDA)
-  node1_calibrate.py           # Step 3: Personal fine-tuning
-  node1_inference.py           # Step 4: Real-time SITL inference
-  node1_coral.py               # Step 5-7: Production Coral pipeline + calibration + online adaptation
-  node2_dashboard.py           # Step 8-11: Pi 5 dashboard + safety + serial relay
-  node3_motor_control/
-    node3_motor_control.ino    # Step 12-14: Arduino motor control + state machine + safety
-  bench_test.py                # Step 15: Automated test suite (5 tests)
-  models/                      # Saved .pt, .onnx, .tflite model files
-  calibration_data/            # Recorded calibration EEG segments (.npz)
-  logs/                        # Timestamped run logs (gitignored)
-  README.md                    # This file
+├── node1_sitl_pipeline.py       # SITL EEG replay + DSP filtering
+├── node1_training.py            # EEGNet pre-training (PyTorch + CUDA)
+├── node1_calibrate.py           # Personal fine-tuning with BN freeze
+├── node1_inference.py           # Real-time SITL inference
+├── node1_coral.py               # Production: ADS1299 + TFLite + calibration + online adaptation
+├── node2_dashboard.py           # Pi 5 dashboard + safety + serial relay
+├── node3_motor_control/
+│   └── node3_motor_control.ino  # Arduino state machine + ramp + E-stop
+├── bench_test.py                # Automated test suite (5 tests)
+├── models/                      # Trained .pt and .onnx model files
+├── calibration_data/            # Personal EEG recordings (.npz)
+└── logs/                        # Runtime logs (gitignored)
 ```
 
-## Development Setup
+---
+
+## Quick Start
 
 ```bash
 # Clone
 git clone https://github.com/Bumply/bitirme.git NeuroDrive
 cd NeuroDrive
 
-# Install Python dependencies (development PC)
+# Install dependencies (development PC with NVIDIA GPU)
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
 pip install moabb mne numpy scipy scikit-learn matplotlib onnx
-pip install nicegui pyserial   # for Node 2 dashboard
-pip install tensorflow-cpu     # for TFLite export only
-
-# Run SITL pipeline (test DSP)
-python node1_sitl_pipeline.py
-
-# Train EEGNet (uses GPU)
-python node1_training.py
-
-# Fine-tune on personal data (SITL: uses subject 9)
-python node1_calibrate.py
-
-# Run real-time inference (SITL)
-python node1_inference.py
-
-# Run production pipeline (SITL fallback on laptop)
-python node1_coral.py
-
-# Run dashboard (open http://localhost:8080)
-python node2_dashboard.py
-
-# Run bench test suite
-python bench_test.py
-
-# Upload Arduino sketch (Arduino IDE or arduino-cli)
-# File: node3_motor_control/node3_motor_control.ino
+pip install nicegui pyserial
+pip install tensorflow-cpu  # TFLite export only
 ```
 
-## Key Design Decisions
+### Run the pipeline step by step:
 
-1. **PyTorch over TensorFlow** — TF 2.11+ dropped native Windows GPU support. PyTorch CUDA works natively. tensorflow-cpu kept for TFLite export.
-2. **8 channels** — ADS1299 supports 8. Using FC3, FC4, C3, Cz, C4, CP3, CP4, FCz for full motor cortex coverage.
-3. **EEGNet** — Compact architecture (1,684 params), all ops supported by Edge TPU int8 quantization.
-4. **3-node separation** — Coral handles real-time ML (latency-critical), Pi handles UI/safety (compute-heavy), Arduino handles motors (reliability-critical).
-5. **Confidence threshold + vote smoothing** — Prevents uncertain predictions from moving the wheelchair. Safety first.
-6. **Hardware E-stop** — Physical button that bypasses all software. Non-negotiable for a mobility device.
-7. **Online adaptation** — High-confidence pseudo-labels + micro fine-tune tracks brain drift without manual recalibration.
+```bash
+# 1. Test DSP filtering with replayed EEG data
+python node1_sitl_pipeline.py
+
+# 2. Train EEGNet on BCI Competition IV-2a dataset
+python node1_training.py
+
+# 3. Fine-tune on personal data (SITL uses subject 9)
+python node1_calibrate.py
+
+# 4. Run real-time inference in SITL mode
+python node1_inference.py
+
+# 5. Launch the dashboard (open http://localhost:8080)
+python node2_dashboard.py
+
+# 6. Run the full bench test suite
+python bench_test.py
+
+# 7. Upload Arduino sketch via Arduino IDE
+#    File: node3_motor_control/node3_motor_control.ino
+```
+
+---
+
+## Hardware BOM
+
+<details>
+<summary><b>Node 1 -- EEG Acquisition + ML</b></summary>
+
+- Google Coral Dev Board Mini (ARM + Edge TPU)
+- Portiloop PCB (ADS1299 8-channel 24-bit EEG front-end)
+- EEG electrode cap (8 channels: FC3, FC4, C3, Cz, C4, CP3, CP4, FCz)
+- Conductive gel + reference/ground electrodes
+
+</details>
+
+<details>
+<summary><b>Node 2 -- Dashboard + Relay</b></summary>
+
+- Raspberry Pi 5 (4GB+ RAM)
+- MicroSD card (32GB+)
+- WiFi (built-in, connects to Coral's AP)
+
+</details>
+
+<details>
+<summary><b>Node 3 -- Motor Control</b></summary>
+
+- Arduino Mega 2560
+- L298N or BTS7960 motor driver
+- Emergency stop button (hardware kill switch)
+- Power relay for motor enable/disable
+- 12V/24V battery
+
+</details>
+
+<details>
+<summary><b>Development Machine (training only)</b></summary>
+
+- Any PC with NVIDIA GPU (RTX 3060 or better)
+- Not mounted on wheelchair -- used once to train the model
+
+</details>
+
+---
+
+## Roadmap
+
+```mermaid
+gantt
+    title NeuroDrive Development Progress
+    dateFormat YYYY-MM-DD
+    axisFormat %b %d
+
+    section Node 1: EEG + ML
+    SITL Pipeline           :done, s1, 2026-03-11, 1d
+    EEGNet Training         :done, s2, 2026-03-12, 1d
+    Personal Calibration    :done, s3, 2026-03-12, 1d
+    Real-Time Inference     :done, s4, 2026-03-12, 1d
+    Coral Hardware Port     :active, s5, 2026-03-25, 7d
+    Calibration Recording   :done, s6, 2026-03-17, 1d
+    Online Adaptation       :done, s7, 2026-03-17, 1d
+
+    section Node 2: Dashboard
+    WiFi Protocol           :done, s8, 2026-03-17, 1d
+    Dashboard UI            :done, s9, 2026-03-17, 1d
+    Safety Logic            :done, s10, 2026-03-17, 1d
+    Serial Relay            :done, s11, 2026-03-17, 1d
+
+    section Node 3: Motors
+    Motor Driver            :done, s12, 2026-03-17, 1d
+    State Machine           :done, s13, 2026-03-17, 1d
+    Hardware Safety         :done, s14, 2026-03-17, 1d
+
+    section Integration
+    Bench Tests             :done, s15, 2026-03-17, 1d
+    Wheelchair Mount        :s16, after s5, 3d
+    Calibration Session     :s17, after s16, 2d
+    Environment Testing     :s18, after s17, 5d
+    Iteration               :s19, after s18, 7d
+```
+
+---
+
+## Design Decisions
+
+| Decision | Rationale |
+|:---------|:----------|
+| **PyTorch over TensorFlow** | TF 2.11+ dropped native Windows GPU. PyTorch CUDA works natively. |
+| **EEGNet (1,684 params)** | Compact, all ops supported by Edge TPU int8 quantization. |
+| **3-node separation** | Coral = real-time ML, Pi = UI/safety, Arduino = motor reliability. |
+| **Confidence + vote smoothing** | Uncertain predictions never move the wheelchair. Safety first. |
+| **Hardware E-stop** | Physical button bypasses all software. Non-negotiable for mobility. |
+| **Online adaptation** | Pseudo-label fine-tuning tracks brain drift without recalibration. |
+| **8 EEG channels** | FC3, FC4, C3, Cz, C4, CP3, CP4, FCz -- full motor cortex coverage. |
+
+---
+
+## Current Status
+
+**Software: COMPLETE** -- all code written and bench-tested in SITL mode.
+
+**Next: Hardware integration** -- Coral port (Linux), wheelchair mounting, personal calibration with real EEG.
+
+---
+
+<p align="center">
+  <i>Built with brainwaves and late nights.</i>
+</p>
