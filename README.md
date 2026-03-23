@@ -1,7 +1,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Platform-Coral%20%7C%20RPi5%20%7C%20Arduino-blue?style=for-the-badge" />
   <img src="https://img.shields.io/badge/ML-EEGNet%20%7C%20Edge%20TPU-green?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Tests-5%2F5%20Passing-brightgreen?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Status-In%20Progress-orange?style=for-the-badge" />
   <img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge" />
 </p>
 
@@ -169,44 +169,6 @@ Arduino sketch: `node3_motor_control/node3_motor_control.ino` -- upload via Ardu
 - 12V/24V battery
 
 </details>
-
----
-
-## Roadmap
-
-```mermaid
-gantt
-    title NeuroDrive Progress
-    dateFormat YYYY-MM-DD
-    axisFormat %b %d
-
-    section Node 1: EEG + ML
-    SITL Pipeline           :done, s1, 2026-03-11, 1d
-    EEGNet Training         :done, s2, 2026-03-12, 1d
-    Personal Calibration    :done, s3, 2026-03-12, 1d
-    Real-Time Inference     :done, s4, 2026-03-12, 1d
-    Coral Hardware Port     :active, s5, 2026-03-25, 7d
-    Calibration Recording   :done, s6, 2026-03-17, 1d
-    Online Adaptation       :done, s7, 2026-03-17, 1d
-
-    section Node 2: Dashboard
-    WiFi Protocol           :done, s8, 2026-03-17, 1d
-    Dashboard UI            :done, s9, 2026-03-17, 1d
-    Safety Logic            :done, s10, 2026-03-17, 1d
-    Serial Relay            :done, s11, 2026-03-17, 1d
-
-    section Node 3: Motors
-    Motor Driver            :done, s12, 2026-03-17, 1d
-    State Machine           :done, s13, 2026-03-17, 1d
-    Hardware Safety         :done, s14, 2026-03-17, 1d
-
-    section Integration
-    Bench Tests             :done, s15, 2026-03-17, 1d
-    Wheelchair Mount        :s16, after s5, 3d
-    Calibration Session     :s17, after s16, 2d
-    Environment Testing     :s18, after s17, 5d
-    Iteration               :s19, after s18, 7d
-```
 
 ---
 
