@@ -11,7 +11,7 @@ Replaces SITL components with real hardware:
     - Calibration listener: records labeled EEG + auto fine-tunes
 
 Prerequisites (on Coral / Mendel Linux):
-    1. Portiloop PCB connected via SPI
+    1. NeuroDrive PCB connected via SPI
     2. EEG cap with 8 electrodes: FC3, FC4, C3, Cz, C4, CP3, CP4, FCz
     3. Model compiled for Edge TPU:
        $ edgetpu_compiler models/EEGNet_*_int8.tflite
@@ -70,15 +70,15 @@ MODELS_DIR     = Path(__file__).parent / "models"
 EDGETPU_MODEL  = None  # set after scanning models dir
 FLOAT32_MODEL  = None
 
-# ADS1299 SPI config (matches portiloop-software backend.py)
+# ADS1299 SPI config (matches reference implementation backend.py)
 SPI_BUS     = 0
 SPI_DEVICE  = 0
-SPI_SPEED   = 1000000   # 1 MHz (Portiloop default, safer than 2 MHz)
+SPI_SPEED   = 1000000   # 1 MHz (default, safer than 2 MHz)
 
-# ADS1299 data conversion (matches portiloop-software config_hardware.py)
-# GAIN = 24 (default), VREF from Portiloop PCB (NOT the ADS internal 4.5V)
+# ADS1299 data conversion (matches reference implementation config_hardware.py)
+# GAIN = 24 (default), VREF from NeuroDrive PCB (NOT the ADS internal 4.5V)
 ADS_GAIN    = 24
-ADS_VREF    = 2.64      # Portiloop PCB reference voltage (measured)
+ADS_VREF    = 2.64      # NeuroDrive PCB reference voltage (measured)
 ADS_LSB     = (2.0 / ADS_GAIN) / (2**24 - 1)  # LSB in volts per VREF
 
 # ADS1299 SPI commands
@@ -128,10 +128,10 @@ class ADS1299Reader:
     """
     Reads 8-channel 24-bit EEG samples from ADS1299 via SPI.
 
-    Based on portiloop-software/hardware/backend.py — uses the same register
-    config, data conversion, and DRDY handling that the original Portiloop uses.
+    Based on reference implementation/hardware/backend.py — uses the same register
+    config, data conversion, and DRDY handling that the original NeuroDrive uses.
 
-    Data conversion chain (matches Portiloop exactly):
+    Data conversion chain (matches NeuroDrive exactly):
         raw 24-bit -> 2's complement -> microvolts
         uV = raw_signed * 1e6 * VREF * ADS_LSB
         where ADS_LSB = (2/GAIN) / (2^24 - 1)
@@ -139,7 +139,7 @@ class ADS1299Reader:
     Also reads lead-off status bytes for electrode contact detection.
     """
 
-    # Channel modes (matches portiloop config_hardware.py mod_config)
+    # Channel modes (matches ADS1299 config mod_config)
     CHANNEL_MODES = {
         "simple":   0x60,  # Normal measurement, gain=24, SRB2 enabled
         "bias":     0x62,  # BIAS measurement (MUX=010)
@@ -168,7 +168,7 @@ class ADS1299Reader:
         self.spi.mode = 0b01   # CPOL=0, CPHA=1 (ADS1299 mode)
 
         # DRDY pin — active low, signals new data ready
-        # Uses edge polling like Portiloop (not busy-wait)
+        # Uses edge polling like NeuroDrive (not busy-wait)
         self.drdy = GPIO("/dev/gpiochip0", 27, "in", edge="falling")
 
         # Default: all 8 channels active in simple mode
@@ -199,7 +199,7 @@ class ADS1299Reader:
     def _configure_registers(self, channel_modes):
         """
         Configure ADS1299 registers for EEG acquisition.
-        Matches portiloop-software config_hardware.py register layout.
+        Matches reference implementation config_hardware.py register layout.
         """
         # Stop continuous read mode
         self.spi.xfer2([ADS_SDATAC])
@@ -261,14 +261,14 @@ class ADS1299Reader:
         """
         Read one 8-channel sample from ADS1299.
 
-        Uses DRDY edge polling (like Portiloop), not busy-wait.
+        Uses DRDY edge polling (like NeuroDrive), not busy-wait.
         Also parses lead-off status bytes for electrode quality monitoring.
 
         Returns
         -------
         sample : np.ndarray, shape (8,), dtype float64 — microvolts
         """
-        # Wait for DRDY falling edge (Portiloop style)
+        # Wait for DRDY falling edge (tuple style)
         self.drdy.poll(timeout=None)
         self.drdy.read_event()
 
@@ -283,7 +283,7 @@ class ADS1299Reader:
         self.loff_statn = ((raw[1] & 0x0F) << 4) | ((raw[2] & 0xF0) >> 4)
 
         # Parse 8 channels: 24-bit -> 2's complement -> microvolts
-        # Matches Portiloop: uV = filter_2scomplement(raw) * 1e6 * VREF * ADS_LSB
+        # Matches NeuroDrive: uV = filter_2scomplement(raw) * 1e6 * VREF * ADS_LSB
         raw_values = np.array([
             (raw[3 + ch*3] << 16) | (raw[4 + ch*3] << 8) | raw[5 + ch*3]
             for ch in range(N_CH)
@@ -363,7 +363,7 @@ class TFLiteInferenceEngine:
         print(f"[MODEL] Output: {out['shape']}  dtype={out['dtype']}")
 
         # Quantization params — try both formats:
-        #   Portiloop uses:      details[i]["quantization"] -> (scale, zero_point) tuple
+        #   NeuroDrive uses:      details[i]["quantization"] -> (scale, zero_point) tuple
         #   Some TFLite builds:  details[i]["quantization_parameters"] -> dict with "scales"/"zero_points"
         self.input_scale, self.input_zero = self._get_quant_params(inp)
         self.output_scale, self.output_zero = self._get_quant_params(out)
@@ -379,10 +379,10 @@ class TFLiteInferenceEngine:
         """
         Extract quantization scale and zero_point from TFLite tensor details.
         Handles both formats:
-          - Portiloop style: details["quantization"] -> (scale, zero_point)
+          - tuple style: details["quantization"] -> (scale, zero_point)
           - Newer TFLite:    details["quantization_parameters"] -> dict
         """
-        # Try Portiloop format first (tuple)
+        # Try NeuroDrive format first (tuple)
         q = details.get("quantization")
         if q is not None and isinstance(q, (tuple, list)) and len(q) == 2:
             scale, zero = q
@@ -424,7 +424,7 @@ class TFLiteInferenceEngine:
             x *= 1e6
 
         if self.is_int8:
-            # Quantize float -> int8 (matches Portiloop forward_tflite)
+            # Quantize float -> int8 (matches TFLite forward pass)
             # Formula: quantized = (float_value / scale) + zero_point
             inp_dtype = self.input_details[0]["dtype"]
             x = (x / self.input_scale + self.input_zero).astype(inp_dtype)
@@ -434,7 +434,7 @@ class TFLiteInferenceEngine:
         output = self.interpreter.get_tensor(self.output_details[0]["index"])
 
         if self.is_int8:
-            # Dequantize int8 -> float (matches Portiloop forward_tflite)
+            # Dequantize int8 -> float (matches TFLite forward pass)
             # Formula: float_value = (quantized - zero_point) * scale
             output = (output.astype(np.float32) - self.output_zero) * self.output_scale
 

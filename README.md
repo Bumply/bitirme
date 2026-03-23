@@ -145,7 +145,7 @@ Arduino sketch: `node3_motor_control/node3_motor_control.ino` -- upload via Ardu
 <summary><b>Node 1 -- EEG + ML</b></summary>
 
 - Google Coral Dev Board Mini (ARM + Edge TPU)
-- Portiloop PCB (ADS1299 8-channel 24-bit EEG front-end)
+- NeuroDrive PCB (ADS1299 8-channel 24-bit EEG front-end)
 - EEG electrode cap (FC3, FC4, C3, Cz, C4, CP3, CP4, FCz)
 - Conductive gel + reference/ground electrodes
 
@@ -187,7 +187,7 @@ Arduino sketch: `node3_motor_control/node3_motor_control.ino` -- upload via Ardu
 
 ## Status
 
-**Software: done.** All code written, validated against [portiloop-software](https://github.com/PortiloopTeam/portiloop-software), bench-tested 5/5.
+**Software: done.** All code written and bench-tested.
 
 **Next up:** Coral hardware port (needs Linux), then wheelchair integration + real EEG calibration.
 
