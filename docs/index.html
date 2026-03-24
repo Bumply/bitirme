@@ -33,18 +33,10 @@
             justify-content: space-between;
             height: 56px;
         }
-        nav .logo {
-            font-size: 1.2rem;
-            font-weight: 700;
-            color: #58a6ff;
-            text-decoration: none;
-        }
+        nav .logo { font-size: 1.2rem; font-weight: 700; color: #58a6ff; text-decoration: none; }
         nav .links a {
-            color: #8b949e;
-            text-decoration: none;
-            margin-left: 1.5rem;
-            font-size: 0.9rem;
-            transition: color 0.2s;
+            color: #8b949e; text-decoration: none; margin-left: 1.5rem;
+            font-size: 0.9rem; transition: color 0.2s;
         }
         nav .links a:hover { color: #c9d1d9; }
 
@@ -54,202 +46,103 @@
             text-align: center;
             background: linear-gradient(180deg, #0d1117 0%, #161b22 100%);
         }
-        .hero h1 {
-            font-size: 3.2rem;
-            font-weight: 800;
-            color: #f0f6fc;
-            margin-bottom: 0.5rem;
-        }
+        .hero h1 { font-size: 3.2rem; font-weight: 800; color: #f0f6fc; margin-bottom: 0.5rem; }
         .hero .subtitle {
-            font-size: 1.15rem;
-            color: #8b949e;
-            max-width: 650px;
-            margin: 0 auto 2rem;
+            font-size: 1.15rem; color: #8b949e; max-width: 650px; margin: 0 auto 2rem;
         }
         .hero .badges img { margin: 0 4px; }
         .hero .cta {
-            display: inline-block;
-            margin-top: 1.5rem;
-            padding: 10px 24px;
-            background: #238636;
-            color: #fff;
-            border-radius: 6px;
-            text-decoration: none;
-            font-weight: 600;
-            transition: background 0.2s;
+            display: inline-block; margin-top: 1.5rem; padding: 10px 24px;
+            background: #238636; color: #fff; border-radius: 6px;
+            text-decoration: none; font-weight: 600; transition: background 0.2s;
         }
         .hero .cta:hover { background: #2ea043; }
 
         /* --- SECTIONS --- */
-        section {
-            max-width: 1100px;
-            margin: 0 auto;
-            padding: 60px 2rem;
-        }
-        section h2 {
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: #f0f6fc;
-            margin-bottom: 0.4rem;
-        }
-        section .section-desc {
-            color: #8b949e;
-            margin-bottom: 2rem;
-            font-size: 0.95rem;
-        }
-        .divider {
-            border: none;
-            border-top: 1px solid #21262d;
-            margin: 0;
-        }
+        section { max-width: 1100px; margin: 0 auto; padding: 60px 2rem; }
+        section h2 { font-size: 1.8rem; font-weight: 700; color: #f0f6fc; margin-bottom: 0.4rem; }
+        section h3 { font-size: 1.3rem; font-weight: 600; color: #c9d1d9; margin: 2rem 0 0.5rem; }
+        section .section-desc { color: #8b949e; margin-bottom: 2rem; font-size: 0.95rem; }
+        section p { color: #8b949e; margin-bottom: 1rem; font-size: 0.95rem; }
+        .divider { border: none; border-top: 1px solid #21262d; margin: 0; }
 
         /* --- IMAGE CARDS --- */
         .fig {
-            background: #161b22;
-            border: 1px solid #30363d;
-            border-radius: 8px;
-            overflow: hidden;
-            margin-bottom: 2rem;
+            background: #161b22; border: 1px solid #30363d;
+            border-radius: 8px; overflow: hidden; margin-bottom: 2rem;
         }
-        .fig img {
-            width: 100%;
-            display: block;
-        }
+        .fig img { width: 100%; display: block; }
         .fig .caption {
-            padding: 12px 16px;
-            font-size: 0.85rem;
-            color: #8b949e;
+            padding: 12px 16px; font-size: 0.85rem; color: #8b949e;
             border-top: 1px solid #21262d;
         }
 
         /* --- GRID --- */
-        .grid-2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.5rem;
-        }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem; }
         @media (max-width: 768px) {
-            .grid-2 { grid-template-columns: 1fr; }
+            .grid-2, .grid-3 { grid-template-columns: 1fr; }
             .hero h1 { font-size: 2.2rem; }
         }
 
         /* --- STATS --- */
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-        @media (max-width: 768px) {
-            .stats { grid-template-columns: repeat(2, 1fr); }
-        }
+        .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem; }
+        @media (max-width: 768px) { .stats { grid-template-columns: repeat(2, 1fr); } }
         .stat-card {
-            background: #161b22;
-            border: 1px solid #30363d;
-            border-radius: 8px;
-            padding: 20px;
-            text-align: center;
+            background: #161b22; border: 1px solid #30363d;
+            border-radius: 8px; padding: 20px; text-align: center;
         }
-        .stat-card .number {
-            font-size: 2rem;
-            font-weight: 800;
-            color: #58a6ff;
-        }
-        .stat-card .label {
-            font-size: 0.8rem;
-            color: #8b949e;
-            margin-top: 4px;
-        }
+        .stat-card .number { font-size: 2rem; font-weight: 800; color: #58a6ff; }
+        .stat-card .label { font-size: 0.8rem; color: #8b949e; margin-top: 4px; }
 
         /* --- NODE CARDS --- */
-        .node-cards {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-        @media (max-width: 768px) {
-            .node-cards { grid-template-columns: 1fr; }
-        }
-        .node-card {
-            background: #161b22;
-            border: 1px solid #30363d;
-            border-radius: 8px;
-            padding: 24px;
-        }
-        .node-card h3 {
-            font-size: 1.1rem;
-            margin-bottom: 0.5rem;
-        }
+        .node-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 2rem; }
+        @media (max-width: 768px) { .node-cards { grid-template-columns: 1fr; } }
+        .node-card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 24px; }
+        .node-card h3 { font-size: 1.1rem; margin-bottom: 0.5rem; margin-top: 0; }
         .node-card.n1 h3 { color: #e94560; }
         .node-card.n2 h3 { color: #58a6ff; }
         .node-card.n3 h3 { color: #3fb950; }
-        .node-card .hw {
-            font-size: 0.85rem;
-            color: #8b949e;
-            margin-bottom: 0.75rem;
-        }
-        .node-card ul {
-            list-style: none;
-            padding: 0;
-        }
-        .node-card ul li {
-            font-size: 0.85rem;
-            padding: 3px 0;
-            color: #c9d1d9;
-        }
-        .node-card ul li::before {
-            content: ">";
-            color: #484f58;
-            margin-right: 8px;
-            font-family: monospace;
-        }
+        .node-card .hw { font-size: 0.85rem; color: #8b949e; margin-bottom: 0.75rem; }
+        .node-card ul { list-style: none; padding: 0; }
+        .node-card ul li { font-size: 0.85rem; padding: 3px 0; color: #c9d1d9; }
+        .node-card ul li::before { content: ">"; color: #484f58; margin-right: 8px; font-family: monospace; }
 
         /* --- PIPELINE --- */
         .pipeline {
-            background: #161b22;
-            border: 1px solid #30363d;
-            border-radius: 8px;
-            padding: 24px;
-            font-family: 'Cascadia Code', 'Fira Code', monospace;
-            font-size: 0.85rem;
-            overflow-x: auto;
-            margin-bottom: 2rem;
-            line-height: 1.8;
+            background: #161b22; border: 1px solid #30363d; border-radius: 8px;
+            padding: 24px; font-family: 'Cascadia Code', 'Fira Code', monospace;
+            font-size: 0.85rem; overflow-x: auto; margin-bottom: 2rem; line-height: 1.8;
         }
         .pipeline .stage { color: #58a6ff; }
         .pipeline .arrow { color: #484f58; }
         .pipeline .detail { color: #8b949e; }
 
         /* --- TABLE --- */
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 2rem;
-        }
+        .data-table { width: 100%; border-collapse: collapse; margin-bottom: 2rem; }
         .data-table th, .data-table td {
-            padding: 10px 16px;
-            text-align: left;
-            border-bottom: 1px solid #21262d;
-            font-size: 0.9rem;
+            padding: 10px 16px; text-align: left; border-bottom: 1px solid #21262d; font-size: 0.9rem;
         }
         .data-table th {
-            color: #8b949e;
-            font-weight: 600;
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            color: #8b949e; font-weight: 600; font-size: 0.8rem;
+            text-transform: uppercase; letter-spacing: 0.5px;
         }
         .data-table td { color: #c9d1d9; }
         .data-table tr:hover td { background: rgba(88, 166, 255, 0.04); }
 
+        /* --- CALLOUT --- */
+        .callout {
+            background: #161b22; border-left: 3px solid #58a6ff;
+            padding: 16px 20px; margin-bottom: 2rem; border-radius: 0 6px 6px 0;
+        }
+        .callout.warn { border-left-color: #f0883e; }
+        .callout.success { border-left-color: #3fb950; }
+        .callout strong { color: #f0f6fc; }
+
         /* --- FOOTER --- */
         footer {
-            text-align: center;
-            padding: 40px 2rem;
-            color: #484f58;
-            font-size: 0.85rem;
-            border-top: 1px solid #21262d;
+            text-align: center; padding: 40px 2rem; color: #484f58;
+            font-size: 0.85rem; border-top: 1px solid #21262d;
         }
         footer a { color: #58a6ff; text-decoration: none; }
     </style>
@@ -262,9 +155,13 @@
         <a href="#" class="logo">NeuroDrive</a>
         <div class="links">
             <a href="#architecture">Architecture</a>
+            <a href="#eeg">EEG Signals</a>
             <a href="#pipeline">Pipeline</a>
+            <a href="#model">Model</a>
             <a href="#results">Results</a>
+            <a href="#calibration">Calibration</a>
             <a href="#safety">Safety</a>
+            <a href="#dashboard">Dashboard</a>
             <a href="https://github.com/Bumply/bitirme">GitHub</a>
         </div>
     </div>
@@ -289,7 +186,7 @@
     <div class="stats">
         <div class="stat-card">
             <div class="number">8</div>
-            <div class="label">EEG Channels</div>
+            <div class="label">EEG Channels (24-bit)</div>
         </div>
         <div class="stat-card">
             <div class="number">&lt;10ms</div>
@@ -301,21 +198,23 @@
         </div>
         <div class="stat-card">
             <div class="number">3</div>
-            <div class="label">Safety Layers</div>
+            <div class="label">Independent Safety Layers</div>
         </div>
     </div>
 </section>
 
 <hr class="divider">
 
+<!-- ================================================================ -->
 <!-- ARCHITECTURE -->
+<!-- ================================================================ -->
 <section id="architecture">
     <h2>System Architecture</h2>
-    <p class="section-desc">Three dedicated nodes, each optimized for its role. Communicating over WiFi and Serial.</p>
+    <p class="section-desc">Three dedicated nodes, each optimized for its role. Communicating over WiFi (UDP) and Serial (UART).</p>
 
     <div class="fig">
         <img src="assets/architecture.png" alt="System Architecture" />
-        <div class="caption">Node 1 handles real-time ML (latency-critical), Node 2 handles UI and safety (compute-heavy), Node 3 handles motors (reliability-critical).</div>
+        <div class="caption">Node 1 handles real-time ML (latency-critical), Node 2 handles UI and safety (compute-heavy), Node 3 handles motors (reliability-critical). Calibration commands flow back from Node 2 to Node 1 on UDP:5001.</div>
     </div>
 
     <div class="node-cards">
@@ -323,11 +222,12 @@
             <h3>Node 1: Coral Dev Board Mini</h3>
             <div class="hw">ARM CPU + Edge TPU + ADS1299 ADC</div>
             <ul>
-                <li>8-channel 24-bit EEG acquisition via SPI</li>
+                <li>8-channel 24-bit EEG acquisition via SPI (1 MHz)</li>
                 <li>50Hz notch + 8-30Hz bandpass filtering</li>
-                <li>EEGNet inference on Edge TPU</li>
+                <li>EEGNet inference on Edge TPU (~4ms)</li>
                 <li>Online adaptation (pseudo-label learning)</li>
                 <li>Calibration recording + auto fine-tune</li>
+                <li>Lead-off detection from ADS1299 status bytes</li>
             </ul>
         </div>
         <div class="node-card n2">
@@ -336,9 +236,10 @@
             <ul>
                 <li>NiceGUI dark-theme web dashboard</li>
                 <li>Drive / Calibrate / Settings tabs</li>
-                <li>Safety logic + heartbeat timeout</li>
-                <li>Serial relay to Arduino</li>
+                <li>Safety logic + heartbeat timeout (3s)</li>
+                <li>Serial relay to Arduino (115200 baud)</li>
                 <li>Visual calibration cue protocol</li>
+                <li>Manual D-pad override + E-stop</li>
             </ul>
         </div>
         <div class="node-card n3">
@@ -346,21 +247,67 @@
             <div class="hw">ATmega2560 + L298N H-Bridge</div>
             <ul>
                 <li>6-state finite state machine</li>
-                <li>Smooth PWM ramp engine</li>
-                <li>Hardware E-stop interrupt (ISR)</li>
-                <li>Battery voltage monitor + cutoff</li>
+                <li>Smooth PWM ramp engine (step=5, 20ms)</li>
+                <li>Hardware E-stop interrupt (ISR, pin 18)</li>
+                <li>Battery voltage monitor (warn 11V, cut 10.5V)</li>
                 <li>Serial watchdog (2s timeout)</li>
+                <li>State acknowledgement every 200ms</li>
             </ul>
         </div>
+    </div>
+
+    <div class="fig">
+        <img src="assets/sequence_diagram.png" alt="Communication Sequence" />
+        <div class="caption">Message sequence showing normal operation and failsafe behavior. When Node 1 stops sending packets for 3 seconds, Node 2 automatically issues a STOP command to protect the user.</div>
     </div>
 </section>
 
 <hr class="divider">
 
-<!-- PIPELINE -->
+<!-- ================================================================ -->
+<!-- EEG SIGNALS -->
+<!-- ================================================================ -->
+<section id="eeg">
+    <h2>EEG Signals & Motor Imagery</h2>
+    <p class="section-desc">Motor imagery produces measurable changes in brain rhythms. When you imagine moving your right hand, the left motor cortex (C3) shows Event-Related Desynchronization (ERD) -- a suppression of mu (8-13Hz) and beta (13-30Hz) power.</p>
+
+    <div class="grid-2">
+        <div class="fig">
+            <img src="assets/channel_map.png" alt="EEG Channel Placement" />
+            <div class="caption">8-channel electrode placement following the International 10-20 system. Color coding shows which channels are primary drivers for each command. Supporting channels improve spatial filtering.</div>
+        </div>
+        <div class="fig">
+            <img src="assets/psd_comparison.png" alt="Power Spectral Density" />
+            <div class="caption">Power spectral density comparison between rest and motor imagery on C3. Clear mu (10Hz) and beta (20Hz) peaks during rest are suppressed during imagery -- this is the ERD signal we detect.</div>
+        </div>
+    </div>
+
+    <div class="fig">
+        <img src="assets/spectrogram_erd.png" alt="Time-Frequency Spectrogram" />
+        <div class="caption">Time-frequency spectrogram of a motor imagery trial. The mu/beta power drops clearly during the imagery period (1-5s) compared to rest. This ERD pattern is what EEGNet learns to classify.</div>
+    </div>
+
+    <table class="data-table">
+        <tr><th>Imagery</th><th>Command</th><th>Action</th><th>Brain Region</th><th>EEG Signature</th></tr>
+        <tr><td>Right hand</td><td>L</td><td>Steer left</td><td>C4 (right motor cortex)</td><td>Contralateral mu/beta ERD</td></tr>
+        <tr><td>Left hand</td><td>R</td><td>Steer right</td><td>C3 (left motor cortex)</td><td>Contralateral mu/beta ERD</td></tr>
+        <tr><td>Feet</td><td>F</td><td>Forward</td><td>Cz (medial motor cortex)</td><td>Central mu/beta ERD</td></tr>
+        <tr><td>Tongue</td><td>S</td><td>Stop</td><td>Broad cortical</td><td>Distinct from hand/feet patterns</td></tr>
+    </table>
+
+    <div class="callout">
+        <strong>Why contralateral?</strong> Motor imagery activates the opposite hemisphere. Right hand imagery suppresses left motor cortex (C3), so the classifier maps it to the LEFT command. This is fundamental to how all motor BCIs work.
+    </div>
+</section>
+
+<hr class="divider">
+
+<!-- ================================================================ -->
+<!-- SIGNAL PIPELINE -->
+<!-- ================================================================ -->
 <section id="pipeline">
-    <h2>Signal Pipeline</h2>
-    <p class="section-desc">From brain to wheelchair in under 10 milliseconds.</p>
+    <h2>Signal Processing Pipeline</h2>
+    <p class="section-desc">From brain to wheelchair in under 10 milliseconds. Every stage is designed for real-time operation at 250 Hz.</p>
 
     <div class="pipeline">
         <span class="stage">ADS1299</span> <span class="detail">(250 SPS, 8ch, 24-bit)</span>
@@ -369,7 +316,7 @@
         <span class="arrow"> --> </span>
         <span class="stage">8-30Hz Bandpass</span> <span class="detail">(Butterworth, order 4)</span>
         <span class="arrow"> --> </span>
-        <span class="stage">1s Window</span> <span class="detail">(250 samples)</span>
+        <span class="stage">1s Window</span> <span class="detail">(250 samples, 50% overlap)</span>
         <span class="arrow"> --> </span>
         <span class="stage">EEGNet</span> <span class="detail">(1,684 params, int8)</span>
         <span class="arrow"> --> </span>
@@ -385,106 +332,270 @@
     </div>
 
     <div class="fig">
+        <img src="assets/raw_vs_filtered.png" alt="Raw vs Filtered EEG" />
+        <div class="caption">Effect of the DSP chain on a raw EEG signal. Top: raw signal with 50Hz mains noise, slow drift, and broadband noise. Middle: after notch filter removes power line interference. Bottom: after bandpass isolates the mu/beta motor imagery band.</div>
+    </div>
+
+    <div class="fig">
         <img src="assets/filter_response.png" alt="DSP Filter Response" />
-        <div class="caption">Frequency response of the DSP chain. The notch filter removes 50Hz mains noise, the bandpass isolates mu (8-13Hz) and beta (13-30Hz) motor imagery rhythms.</div>
+        <div class="caption">Frequency response of each filter stage. The notch provides a narrow 50Hz rejection (-40dB), the bandpass passes 8-30Hz with sharp roll-off, and the combined chain cleanly isolates motor imagery rhythms.</div>
     </div>
 
     <div class="fig">
         <img src="assets/eeg_classification_demo.png" alt="EEG Classification Demo" />
-        <div class="caption">Simulated right hand motor imagery. C3 (left motor cortex) shows clear mu/beta desynchronization during the imagery period. The classifier outputs "R" (steer right) with high confidence.</div>
+        <div class="caption">Full pipeline in action. Top 3 panels: filtered EEG from C3, Cz, C4 during right hand motor imagery (note the C3 amplitude drop in the green shaded region). Bottom: classifier confidence per 0.5s window -- predictions above threshold (red dashed) become commands.</div>
+    </div>
+
+    <div class="fig">
+        <img src="assets/latency_breakdown.png" alt="Latency Breakdown" />
+        <div class="caption">Per-component latency breakdown. The full pipeline uses 7.9ms of the 500ms budget, leaving 98.4% headroom. EEGNet inference is the dominant cost at 4ms.</div>
     </div>
 </section>
 
 <hr class="divider">
 
+<!-- ================================================================ -->
 <!-- MODEL -->
-<section>
+<!-- ================================================================ -->
+<section id="model">
     <h2>EEGNet Model</h2>
-    <p class="section-desc">Compact CNN designed for EEG. 1,684 parameters -- small enough for Edge TPU int8 quantization.</p>
+    <p class="section-desc">A compact CNN specifically designed for EEG classification. Small enough for Edge TPU int8 quantization while capturing temporal and spatial EEG features.</p>
 
     <div class="fig">
         <img src="assets/eegnet_architecture.png" alt="EEGNet Architecture" />
-        <div class="caption">During personal calibration, Block 1 and 2 are frozen (temporal and spatial features learned from 8 subjects). Only Block 3 and the classifier head are fine-tuned on personal data.</div>
+        <div class="caption">EEGNet processes a 1-second window through temporal convolution (learning frequency filters), depthwise spatial convolution (learning channel combinations), and separable convolution (learning temporal patterns). During calibration, only Block 3 and the classifier are fine-tuned.</div>
     </div>
 
-    <table class="data-table">
-        <tr><th>Parameter</th><th>Value</th></tr>
-        <tr><td>Input shape</td><td>(1, 8, 250) -- 1 second, 8 channels, 250 Hz</td></tr>
-        <tr><td>Temporal filters (F1)</td><td>8 (kernel = 64 samples, ~256ms)</td></tr>
-        <tr><td>Depth multiplier (D)</td><td>2</td></tr>
-        <tr><td>Separable filters (F2)</td><td>16</td></tr>
-        <tr><td>Dropout</td><td>0.5</td></tr>
-        <tr><td>Output</td><td>4 classes (Forward, Left, Right, Stop)</td></tr>
-        <tr><td>Total parameters</td><td>1,684</td></tr>
-        <tr><td>Inference format</td><td>int8 TFLite (Edge TPU)</td></tr>
-    </table>
+    <div class="grid-2">
+        <table class="data-table">
+            <tr><th>Parameter</th><th>Value</th></tr>
+            <tr><td>Input shape</td><td>(1, 8, 250)</td></tr>
+            <tr><td>Temporal filters (F1)</td><td>8 (kernel=64, ~256ms)</td></tr>
+            <tr><td>Depth multiplier (D)</td><td>2</td></tr>
+            <tr><td>Separable filters (F2)</td><td>16</td></tr>
+            <tr><td>Dropout</td><td>0.5</td></tr>
+            <tr><td>Output classes</td><td>4 (F, L, R, S)</td></tr>
+            <tr><td>Total parameters</td><td>1,684</td></tr>
+            <tr><td>Inference format</td><td>int8 TFLite (Edge TPU)</td></tr>
+        </table>
+        <table class="data-table">
+            <tr><th>Training Config</th><th>Value</th></tr>
+            <tr><td>Optimizer</td><td>Adam (LR=0.001)</td></tr>
+            <tr><td>Batch size</td><td>64</td></tr>
+            <tr><td>Max epochs</td><td>200</td></tr>
+            <tr><td>Early stopping</td><td>Patience = 25</td></tr>
+            <tr><td>Data</td><td>BCI-IV-2a (8 subjects)</td></tr>
+            <tr><td>Window</td><td>1s (0.5-4.0s post-cue)</td></tr>
+            <tr><td>Stride</td><td>125 samples (50% overlap)</td></tr>
+            <tr><td>Precision</td><td>Mixed FP16 (Tensor Cores)</td></tr>
+        </table>
+    </div>
+
+    <div class="callout">
+        <strong>Why EEGNet?</strong> With only 1,684 parameters, every operation maps to Edge TPU int8 instructions. Larger models (EEGConformer, ATCNet) achieve higher accuracy but can't run on embedded hardware in real-time. EEGNet hits the sweet spot between accuracy and deployability.
+    </div>
 </section>
 
 <hr class="divider">
 
+<!-- ================================================================ -->
 <!-- RESULTS -->
+<!-- ================================================================ -->
 <section id="results">
-    <h2>Results</h2>
-    <p class="section-desc">Training and evaluation on BCI Competition IV-2a dataset (9 subjects, 4-class motor imagery).</p>
+    <h2>Training Results</h2>
+    <p class="section-desc">Pre-trained on BCI Competition IV-2a (9 subjects, 4-class motor imagery, 250Hz, 22 channels downsampled to 8).</p>
 
+    <h3>Cross-Subject Pre-Training</h3>
     <div class="fig">
         <img src="assets/training_curves.png" alt="Training Curves" />
-        <div class="caption">Cross-subject pre-training on subjects 1-8 with PyTorch + CUDA. Best validation accuracy: 43% (chance level: 25%). Early stopping at epoch ~120.</div>
+        <div class="caption">Training on subjects 1-8, validated on held-out windows. Loss converges around epoch 80, accuracy plateaus at ~43%. Early stopping triggered at epoch ~120. The gap between train and val accuracy indicates subject-specific patterns that cross-subject training can't capture -- this is why personal calibration matters.</div>
+    </div>
+
+    <div class="fig">
+        <img src="assets/per_subject_accuracy.png" alt="Per-Subject Accuracy" />
+        <div class="caption">Accuracy varies significantly across subjects (33-51%), which is typical in BCI. Some people produce stronger ERD patterns than others. Subject 9 (green) shows accuracy after personal calibration -- the model adapts to individual brain signatures.</div>
     </div>
 
     <div class="grid-2">
         <div class="fig">
             <img src="assets/confusion_matrix.png" alt="Confusion Matrix" />
-            <div class="caption">Cross-subject confusion matrix. Forward and Right are best classified. Left/Stop confusion is expected -- both involve subtle imagery patterns.</div>
+            <div class="caption">Cross-subject confusion matrix. Forward (feet) and Right (left hand) are best classified. Left/Stop confusion is expected -- tongue imagery produces a less distinct EEG pattern.</div>
         </div>
         <div class="fig">
-            <img src="assets/calibration_impact.png" alt="Calibration Impact" />
-            <div class="caption">Per-class accuracy before and after personal calibration (SITL, subject 9). All classes improve. Real EEG calibration is expected to reach 75-85%.</div>
+            <img src="assets/command_distribution.png" alt="Command Distribution" />
+            <div class="caption">Predicted vs true command distribution during SITL inference. The model shows slight bias toward Forward and Right. Confidence gating filters out low-quality predictions.</div>
         </div>
     </div>
 
+    <h3>Personal Fine-Tuning</h3>
     <div class="fig">
-        <img src="assets/latency_breakdown.png" alt="Latency Breakdown" />
-        <div class="caption">Per-component latency profile. EEGNet inference dominates at 4ms. Total pipeline uses 7.9ms of the 500ms budget -- 98.4% headroom.</div>
+        <img src="assets/finetuning_curves.png" alt="Fine-Tuning Curves" />
+        <div class="caption">Fine-tuning on subject 9 data with frozen Blocks 1+2. Starting from 43% base accuracy, personal calibration reaches 56% in SITL. With real personal EEG data (stronger signal, better electrode contact), we expect 75-85%.</div>
+    </div>
+
+    <div class="fig">
+        <img src="assets/calibration_impact.png" alt="Calibration Impact" />
+        <div class="caption">Per-class improvement from personal calibration. All four classes benefit, with the largest gains in Forward (+20pp) and Stop (+11pp). The model learns individual-specific spatial patterns that cross-subject training misses.</div>
+    </div>
+
+    <div class="callout success">
+        <strong>Key insight:</strong> 43% cross-subject accuracy sounds low, but it's 1.7x chance level (25%) across 4 classes, with 8 different brains. Personal calibration closes the gap. Published EEGNet papers report 60-85% with personal data, and our architecture matches their configuration.
     </div>
 </section>
 
 <hr class="divider">
 
+<!-- ================================================================ -->
+<!-- CALIBRATION -->
+<!-- ================================================================ -->
+<section id="calibration">
+    <h2>Calibration & Adaptation</h2>
+    <p class="section-desc">Two mechanisms to personalize the model: initial calibration (guided session) and online adaptation (continuous learning during use).</p>
+
+    <h3>Calibration Protocol</h3>
+    <div class="fig">
+        <img src="assets/calibration_protocol.png" alt="Calibration Protocol" />
+        <div class="caption">Visual cue protocol run from the dashboard. Each trial: 2s fixation cross, 4s motor imagery (with visual cue), 2s rest. 25 trials per class, 100 total trials, approximately 13 minutes. EEG is recorded only during imagery phases and automatically labeled.</div>
+    </div>
+
+    <p>The calibration flow is fully automated:</p>
+    <table class="data-table">
+        <tr><th>Step</th><th>What Happens</th><th>Where</th></tr>
+        <tr><td>1</td><td>User clicks "Start Calibration" on dashboard</td><td>Node 2</td></tr>
+        <tr><td>2</td><td>Dashboard displays visual cues (arrow directions)</td><td>Node 2 browser</td></tr>
+        <tr><td>3</td><td>Dashboard sends phase commands via UDP:5001</td><td>Node 2 -> Node 1</td></tr>
+        <tr><td>4</td><td>CalibrationRecorder captures labeled EEG windows</td><td>Node 1</td></tr>
+        <tr><td>5</td><td>Auto fine-tune: freeze Block 1+2, train Block 3 + head</td><td>Node 1</td></tr>
+        <tr><td>6</td><td>Before/after accuracy sent back to dashboard</td><td>Node 1 -> Node 2</td></tr>
+    </table>
+
+    <h3>Online Adaptation</h3>
+    <div class="fig">
+        <img src="assets/online_adaptation.png" alt="Online Adaptation" />
+        <div class="caption">Without adaptation (red), accuracy degrades over time due to brain fatigue, electrode impedance changes, and mental state drift. Online adaptation (green) uses high-confidence predictions as pseudo-labels to continuously fine-tune, maintaining accuracy throughout the session.</div>
+    </div>
+
+    <div class="callout">
+        <strong>How it works:</strong> Predictions above 80% confidence are accumulated as pseudo-labels. Every 50 confident samples, a micro fine-tune runs (5 epochs, LR=5e-5) with Block 1+2 frozen and BatchNorm layers locked in eval mode. This prevents catastrophic forgetting while tracking gradual brain drift.
+    </div>
+</section>
+
+<hr class="divider">
+
+<!-- ================================================================ -->
 <!-- SAFETY -->
+<!-- ================================================================ -->
 <section id="safety">
     <h2>Safety System</h2>
-    <p class="section-desc">Three independent layers. Any single layer can stop the wheelchair.</p>
+    <p class="section-desc">Three independent layers of protection. Any single layer can stop the wheelchair. They operate in parallel, not in series -- a failure in one layer doesn't compromise the others.</p>
 
     <table class="data-table">
-        <tr><th>Layer</th><th>Location</th><th>Mechanisms</th></tr>
+        <tr><th>Layer</th><th>Location</th><th>Mechanisms</th><th>Response Time</th></tr>
         <tr>
             <td>Software</td>
             <td>Node 1 + 2</td>
             <td>Confidence threshold (40%), majority vote (window=3), heartbeat timeout (3s), speed limiter</td>
+            <td>~500ms (next inference window)</td>
         </tr>
         <tr>
             <td>Firmware</td>
             <td>Node 3 (Arduino)</td>
             <td>Serial watchdog (2s), battery cutoff (10.5V), PWM ramp limiting, state validation</td>
+            <td>20ms (ramp interval)</td>
         </tr>
         <tr>
             <td>Hardware</td>
             <td>Electrical</td>
-            <td>Physical E-stop button wired directly to motor driver enable -- bypasses all software</td>
+            <td>Physical E-stop button wired directly to motor driver enable pin -- bypasses all software and firmware</td>
+            <td>Instant (electrical)</td>
         </tr>
     </table>
 
-    <!-- Motor imagery mapping -->
-    <h2 style="margin-top: 3rem;">Motor Imagery Mapping</h2>
-    <p class="section-desc">Motor imagery activates the opposite hemisphere (contralateral control).</p>
+    <div class="fig">
+        <img src="assets/state_machine.png" alt="Arduino State Machine" />
+        <div class="caption">Node 3 state machine. All transitions go through smooth PWM ramping to prevent sudden jerks. The E-STOP state is reachable from any state via hardware interrupt (ISR on pin 18), killing motors immediately. Recovery requires both a serial 'S' command and physical button release.</div>
+    </div>
+
+    <div class="callout warn">
+        <strong>Non-negotiable:</strong> The hardware E-stop is a physical button that electrically disconnects the motor driver. Even if all three microcontrollers crash simultaneously, pressing this button stops the wheelchair. This is required for any mobility device.
+    </div>
+</section>
+
+<hr class="divider">
+
+<!-- ================================================================ -->
+<!-- DASHBOARD -->
+<!-- ================================================================ -->
+<section id="dashboard">
+    <h2>Dashboard</h2>
+    <p class="section-desc">NiceGUI-based web interface served from the Raspberry Pi 5. Three tabs: Drive (real-time control monitoring), Calibrate (guided EEG recording), Settings (system configuration).</p>
+
+    <div class="fig">
+        <img src="assets/dashboard_wireframe.png" alt="Dashboard Wireframe" />
+        <div class="caption">Drive tab layout. The current command is displayed with color-coded glow effects. The confidence bar shows real-time classifier certainty. Manual D-pad override and hardware E-stop button are always accessible. The command log shows timestamped history with source tracking.</div>
+    </div>
+
+    <div class="grid-3">
+        <div class="node-card n2">
+            <h3>Drive Tab</h3>
+            <ul>
+                <li>Live command display with glow</li>
+                <li>Confidence progress bar</li>
+                <li>D-pad manual override</li>
+                <li>E-stop button (software)</li>
+                <li>Scrolling command log</li>
+                <li>Packet stats + latency</li>
+            </ul>
+        </div>
+        <div class="node-card n1">
+            <h3>Calibrate Tab</h3>
+            <ul>
+                <li>Visual cue display area</li>
+                <li>Trial progress bar</li>
+                <li>Start/stop controls</li>
+                <li>Phase indicator (fixation/imagery/rest)</li>
+                <li>Before/after accuracy results</li>
+                <li>Auto-triggers fine-tuning</li>
+            </ul>
+        </div>
+        <div class="node-card n3">
+            <h3>Settings Tab</h3>
+            <ul>
+                <li>Network config (IPs, ports)</li>
+                <li>Safety params (timeouts, speed)</li>
+                <li>Serial port selection</li>
+                <li>Calibration protocol config</li>
+                <li>Model selection</li>
+                <li>Adaptation toggle</li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<hr class="divider">
+
+<!-- ================================================================ -->
+<!-- PERFORMANCE SUMMARY -->
+<!-- ================================================================ -->
+<section>
+    <h2>Performance Summary</h2>
 
     <table class="data-table">
-        <tr><th>Imagery</th><th>Command</th><th>Action</th><th>EEG Source</th></tr>
-        <tr><td>Right hand</td><td>L</td><td>Steer left</td><td>C4 ERD (contralateral)</td></tr>
-        <tr><td>Left hand</td><td>R</td><td>Steer right</td><td>C3 ERD (contralateral)</td></tr>
-        <tr><td>Feet</td><td>F</td><td>Forward</td><td>Cz ERD (medial cortex)</td></tr>
-        <tr><td>Tongue</td><td>S</td><td>Stop</td><td>Broad cortical pattern</td></tr>
+        <tr><th>Metric</th><th>Value</th><th>Notes</th></tr>
+        <tr><td>Sampling rate</td><td>250 SPS x 8ch</td><td>ADS1299 24-bit ADC, VREF=2.64V</td></tr>
+        <tr><td>ADC resolution</td><td>24-bit</td><td>LSB = (2/24)/(2^24-1) * VREF</td></tr>
+        <tr><td>DSP latency</td><td>&lt;1ms</td><td>IIR notch + Butterworth bandpass</td></tr>
+        <tr><td>Inference latency</td><td>~4ms GPU / ~2-5ms Edge TPU</td><td>1,684 parameter int8 model</td></tr>
+        <tr><td>End-to-end latency</td><td>&lt;10ms</td><td>SPI read to UDP command output</td></tr>
+        <tr><td>Budget headroom</td><td>492ms / 500ms (98.4%)</td><td>Classification every 500ms window</td></tr>
+        <tr><td>Cross-subject accuracy</td><td>43%</td><td>4-class, chance=25%, 8 training subjects</td></tr>
+        <tr><td>After calibration</td><td>56% (SITL)</td><td>Target 75-85% with real personal EEG</td></tr>
+        <tr><td>Confidence threshold</td><td>40%</td><td>Below threshold = hold current command</td></tr>
+        <tr><td>Vote smoothing</td><td>Window=3</td><td>Majority vote prevents single-window jitter</td></tr>
+        <tr><td>Heartbeat timeout</td><td>3 seconds</td><td>Auto-stop if Node 1 goes silent</td></tr>
+        <tr><td>Watchdog timeout</td><td>2 seconds</td><td>Arduino auto-stop if no serial input</td></tr>
+        <tr><td>Battery cutoff</td><td>10.5V (warn at 11V)</td><td>Voltage divider on A0, ratio 5.7</td></tr>
+        <tr><td>Bench tests</td><td>5/5 passing</td><td>Full pipeline, failsafe, E-stop, smoother, serial</td></tr>
     </table>
 </section>
 
@@ -493,19 +604,19 @@
 <!-- QUICK START -->
 <section>
     <h2>Quick Start</h2>
-    <p class="section-desc">All software runs on a standard development PC with an NVIDIA GPU.</p>
+    <p class="section-desc">All software runs in SITL mode on a standard development PC with an NVIDIA GPU. No hardware required to test.</p>
     <div class="pipeline" style="line-height: 2.2;">
         <span class="detail">$</span> <span class="stage">git clone</span> https://github.com/Bumply/bitirme.git NeuroDrive<br>
         <span class="detail">$</span> <span class="stage">cd</span> NeuroDrive<br>
         <span class="detail">$</span> <span class="stage">pip install</span> torch torchvision --index-url https://download.pytorch.org/whl/cu121<br>
         <span class="detail">$</span> <span class="stage">pip install</span> moabb mne numpy scipy scikit-learn matplotlib onnx nicegui pyserial<br>
         <br>
-        <span class="detail">$</span> <span class="stage">python</span> node1_sitl_pipeline.py &nbsp;&nbsp;<span class="detail"># test DSP with replayed EEG</span><br>
-        <span class="detail">$</span> <span class="stage">python</span> node1_training.py &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="detail"># train EEGNet (needs GPU)</span><br>
-        <span class="detail">$</span> <span class="stage">python</span> node1_calibrate.py &nbsp;&nbsp;&nbsp;&nbsp;<span class="detail"># personal fine-tuning</span><br>
-        <span class="detail">$</span> <span class="stage">python</span> node1_inference.py &nbsp;&nbsp;&nbsp;&nbsp;<span class="detail"># real-time SITL inference</span><br>
-        <span class="detail">$</span> <span class="stage">python</span> node2_dashboard.py &nbsp;&nbsp;&nbsp;&nbsp;<span class="detail"># dashboard at localhost:8080</span><br>
-        <span class="detail">$</span> <span class="stage">python</span> bench_test.py &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="detail"># run all tests</span>
+        <span class="detail">$</span> <span class="stage">python</span> node1_sitl_pipeline.py &nbsp;&nbsp;<span class="detail"># 1. test DSP with replayed BCI-IV-2a EEG</span><br>
+        <span class="detail">$</span> <span class="stage">python</span> node1_training.py &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="detail"># 2. train EEGNet on 8 subjects (needs GPU)</span><br>
+        <span class="detail">$</span> <span class="stage">python</span> node1_calibrate.py &nbsp;&nbsp;&nbsp;&nbsp;<span class="detail"># 3. fine-tune on subject 9 (SITL stand-in)</span><br>
+        <span class="detail">$</span> <span class="stage">python</span> node1_inference.py &nbsp;&nbsp;&nbsp;&nbsp;<span class="detail"># 4. real-time SITL inference with vote smoothing</span><br>
+        <span class="detail">$</span> <span class="stage">python</span> node2_dashboard.py &nbsp;&nbsp;&nbsp;&nbsp;<span class="detail"># 5. launch dashboard at localhost:8080</span><br>
+        <span class="detail">$</span> <span class="stage">python</span> bench_test.py &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="detail"># 6. run full automated test suite (5 tests)</span>
     </div>
 </section>
 
