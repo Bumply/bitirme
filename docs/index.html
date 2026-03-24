@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroDrive - EEG-Controlled Wheelchair</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, sans-serif;
+            background: #0d1117;
+            color: #c9d1d9;
+            line-height: 1.6;
+        }
+
+        /* --- NAV --- */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background: rgba(13, 17, 23, 0.92);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid #21262d;
+            z-index: 100;
+            padding: 0 2rem;
+        }
+        nav .nav-inner {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 56px;
+        }
+        nav .logo {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #58a6ff;
+            text-decoration: none;
+        }
+        nav .links a {
+            color: #8b949e;
+            text-decoration: none;
+            margin-left: 1.5rem;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+        nav .links a:hover { color: #c9d1d9; }
+
+        /* --- HERO --- */
+        .hero {
+            padding: 120px 2rem 60px;
+            text-align: center;
+            background: linear-gradient(180deg, #0d1117 0%, #161b22 100%);
+        }
+        .hero h1 {
+            font-size: 3.2rem;
+            font-weight: 800;
+            color: #f0f6fc;
+            margin-bottom: 0.5rem;
+        }
+        .hero .subtitle {
+            font-size: 1.15rem;
+            color: #8b949e;
+            max-width: 650px;
+            margin: 0 auto 2rem;
+        }
+        .hero .badges img { margin: 0 4px; }
+        .hero .cta {
+            display: inline-block;
+            margin-top: 1.5rem;
+            padding: 10px 24px;
+            background: #238636;
+            color: #fff;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        .hero .cta:hover { background: #2ea043; }
+
+        /* --- SECTIONS --- */
+        section {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 60px 2rem;
+        }
+        section h2 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #f0f6fc;
+            margin-bottom: 0.4rem;
+        }
+        section .section-desc {
+            color: #8b949e;
+            margin-bottom: 2rem;
+            font-size: 0.95rem;
+        }
+        .divider {
+            border: none;
+            border-top: 1px solid #21262d;
+            margin: 0;
+        }
+
+        /* --- IMAGE CARDS --- */
+        .fig {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+        .fig img {
+            width: 100%;
+            display: block;
+        }
+        .fig .caption {
+            padding: 12px 16px;
+            font-size: 0.85rem;
+            color: #8b949e;
+            border-top: 1px solid #21262d;
+        }
+
+        /* --- GRID --- */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+        @media (max-width: 768px) {
+            .grid-2 { grid-template-columns: 1fr; }
+            .hero h1 { font-size: 2.2rem; }
+        }
+
+        /* --- STATS --- */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        @media (max-width: 768px) {
+            .stats { grid-template-columns: repeat(2, 1fr); }
+        }
+        .stat-card {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }
+        .stat-card .number {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #58a6ff;
+        }
+        .stat-card .label {
+            font-size: 0.8rem;
+            color: #8b949e;
+            margin-top: 4px;
+        }
+
+        /* --- NODE CARDS --- */
+        .node-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        @media (max-width: 768px) {
+            .node-cards { grid-template-columns: 1fr; }
+        }
+        .node-card {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 24px;
+        }
+        .node-card h3 {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+        }
+        .node-card.n1 h3 { color: #e94560; }
+        .node-card.n2 h3 { color: #58a6ff; }
+        .node-card.n3 h3 { color: #3fb950; }
+        .node-card .hw {
+            font-size: 0.85rem;
+            color: #8b949e;
+            margin-bottom: 0.75rem;
+        }
+        .node-card ul {
+            list-style: none;
+            padding: 0;
+        }
+        .node-card ul li {
+            font-size: 0.85rem;
+            padding: 3px 0;
+            color: #c9d1d9;
+        }
+        .node-card ul li::before {
+            content: ">";
+            color: #484f58;
+            margin-right: 8px;
+            font-family: monospace;
+        }
+
+        /* --- PIPELINE --- */
+        .pipeline {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 24px;
+            font-family: 'Cascadia Code', 'Fira Code', monospace;
+            font-size: 0.85rem;
+            overflow-x: auto;
+            margin-bottom: 2rem;
+            line-height: 1.8;
+        }
+        .pipeline .stage { color: #58a6ff; }
+        .pipeline .arrow { color: #484f58; }
+        .pipeline .detail { color: #8b949e; }
+
+        /* --- TABLE --- */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 2rem;
+        }
+        .data-table th, .data-table td {
+            padding: 10px 16px;
+            text-align: left;
+            border-bottom: 1px solid #21262d;
+            font-size: 0.9rem;
+        }
+        .data-table th {
+            color: #8b949e;
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .data-table td { color: #c9d1d9; }
+        .data-table tr:hover td { background: rgba(88, 166, 255, 0.04); }
+
+        /* --- FOOTER --- */
+        footer {
+            text-align: center;
+            padding: 40px 2rem;
+            color: #484f58;
+            font-size: 0.85rem;
+            border-top: 1px solid #21262d;
+        }
+        footer a { color: #58a6ff; text-decoration: none; }
+    </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+    <div class="nav-inner">
+        <a href="#" class="logo">NeuroDrive</a>
+        <div class="links">
+            <a href="#architecture">Architecture</a>
+            <a href="#pipeline">Pipeline</a>
+            <a href="#results">Results</a>
+            <a href="#safety">Safety</a>
+            <a href="https://github.com/Bumply/bitirme">GitHub</a>
+        </div>
+    </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+    <h1>NeuroDrive</h1>
+    <p class="subtitle">
+        3-node Brain-Computer Interface that reads motor imagery EEG, classifies it with EEGNet on a Coral Edge TPU, and drives a wheelchair.
+    </p>
+    <div class="badges">
+        <img src="https://img.shields.io/badge/Platform-Coral%20%7C%20RPi5%20%7C%20Arduino-blue?style=flat-square" alt="Platform" />
+        <img src="https://img.shields.io/badge/ML-EEGNet%20%7C%20Edge%20TPU-green?style=flat-square" alt="ML" />
+        <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="License" />
+    </div>
+    <a href="https://github.com/Bumply/bitirme" class="cta">View on GitHub</a>
+</div>
+
+<!-- STATS -->
+<section>
+    <div class="stats">
+        <div class="stat-card">
+            <div class="number">8</div>
+            <div class="label">EEG Channels</div>
+        </div>
+        <div class="stat-card">
+            <div class="number">&lt;10ms</div>
+            <div class="label">End-to-End Latency</div>
+        </div>
+        <div class="stat-card">
+            <div class="number">1,684</div>
+            <div class="label">Model Parameters</div>
+        </div>
+        <div class="stat-card">
+            <div class="number">3</div>
+            <div class="label">Safety Layers</div>
+        </div>
+    </div>
+</section>
+
+<hr class="divider">
+
+<!-- ARCHITECTURE -->
+<section id="architecture">
+    <h2>System Architecture</h2>
+    <p class="section-desc">Three dedicated nodes, each optimized for its role. Communicating over WiFi and Serial.</p>
+
+    <div class="fig">
+        <img src="assets/architecture.png" alt="System Architecture" />
+        <div class="caption">Node 1 handles real-time ML (latency-critical), Node 2 handles UI and safety (compute-heavy), Node 3 handles motors (reliability-critical).</div>
+    </div>
+
+    <div class="node-cards">
+        <div class="node-card n1">
+            <h3>Node 1: Coral Dev Board Mini</h3>
+            <div class="hw">ARM CPU + Edge TPU + ADS1299 ADC</div>
+            <ul>
+                <li>8-channel 24-bit EEG acquisition via SPI</li>
+                <li>50Hz notch + 8-30Hz bandpass filtering</li>
+                <li>EEGNet inference on Edge TPU</li>
+                <li>Online adaptation (pseudo-label learning)</li>
+                <li>Calibration recording + auto fine-tune</li>
+            </ul>
+        </div>
+        <div class="node-card n2">
+            <h3>Node 2: Raspberry Pi 5</h3>
+            <div class="hw">4GB RAM + WiFi + USB Serial</div>
+            <ul>
+                <li>NiceGUI dark-theme web dashboard</li>
+                <li>Drive / Calibrate / Settings tabs</li>
+                <li>Safety logic + heartbeat timeout</li>
+                <li>Serial relay to Arduino</li>
+                <li>Visual calibration cue protocol</li>
+            </ul>
+        </div>
+        <div class="node-card n3">
+            <h3>Node 3: Arduino Mega 2560</h3>
+            <div class="hw">ATmega2560 + L298N H-Bridge</div>
+            <ul>
+                <li>6-state finite state machine</li>
+                <li>Smooth PWM ramp engine</li>
+                <li>Hardware E-stop interrupt (ISR)</li>
+                <li>Battery voltage monitor + cutoff</li>
+                <li>Serial watchdog (2s timeout)</li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<hr class="divider">
+
+<!-- PIPELINE -->
+<section id="pipeline">
+    <h2>Signal Pipeline</h2>
+    <p class="section-desc">From brain to wheelchair in under 10 milliseconds.</p>
+
+    <div class="pipeline">
+        <span class="stage">ADS1299</span> <span class="detail">(250 SPS, 8ch, 24-bit)</span>
+        <span class="arrow"> --> </span>
+        <span class="stage">50Hz Notch</span> <span class="detail">(IIR, Q=30)</span>
+        <span class="arrow"> --> </span>
+        <span class="stage">8-30Hz Bandpass</span> <span class="detail">(Butterworth, order 4)</span>
+        <span class="arrow"> --> </span>
+        <span class="stage">1s Window</span> <span class="detail">(250 samples)</span>
+        <span class="arrow"> --> </span>
+        <span class="stage">EEGNet</span> <span class="detail">(1,684 params, int8)</span>
+        <span class="arrow"> --> </span>
+        <span class="stage">Confidence Gate</span> <span class="detail">(40%)</span>
+        <span class="arrow"> --> </span>
+        <span class="stage">Vote Smoother</span> <span class="detail">(window=3)</span>
+        <span class="arrow"> --> </span>
+        <span class="stage">UDP TX</span>
+        <span class="arrow"> --> </span>
+        <span class="stage">Safety</span>
+        <span class="arrow"> --> </span>
+        <span class="stage">Motor PWM</span>
+    </div>
+
+    <div class="fig">
+        <img src="assets/filter_response.png" alt="DSP Filter Response" />
+        <div class="caption">Frequency response of the DSP chain. The notch filter removes 50Hz mains noise, the bandpass isolates mu (8-13Hz) and beta (13-30Hz) motor imagery rhythms.</div>
+    </div>
+
+    <div class="fig">
+        <img src="assets/eeg_classification_demo.png" alt="EEG Classification Demo" />
+        <div class="caption">Simulated right hand motor imagery. C3 (left motor cortex) shows clear mu/beta desynchronization during the imagery period. The classifier outputs "R" (steer right) with high confidence.</div>
+    </div>
+</section>
+
+<hr class="divider">
+
+<!-- MODEL -->
+<section>
+    <h2>EEGNet Model</h2>
+    <p class="section-desc">Compact CNN designed for EEG. 1,684 parameters -- small enough for Edge TPU int8 quantization.</p>
+
+    <div class="fig">
+        <img src="assets/eegnet_architecture.png" alt="EEGNet Architecture" />
+        <div class="caption">During personal calibration, Block 1 and 2 are frozen (temporal and spatial features learned from 8 subjects). Only Block 3 and the classifier head are fine-tuned on personal data.</div>
+    </div>
+
+    <table class="data-table">
+        <tr><th>Parameter</th><th>Value</th></tr>
+        <tr><td>Input shape</td><td>(1, 8, 250) -- 1 second, 8 channels, 250 Hz</td></tr>
+        <tr><td>Temporal filters (F1)</td><td>8 (kernel = 64 samples, ~256ms)</td></tr>
+        <tr><td>Depth multiplier (D)</td><td>2</td></tr>
+        <tr><td>Separable filters (F2)</td><td>16</td></tr>
+        <tr><td>Dropout</td><td>0.5</td></tr>
+        <tr><td>Output</td><td>4 classes (Forward, Left, Right, Stop)</td></tr>
+        <tr><td>Total parameters</td><td>1,684</td></tr>
+        <tr><td>Inference format</td><td>int8 TFLite (Edge TPU)</td></tr>
+    </table>
+</section>
+
+<hr class="divider">
+
+<!-- RESULTS -->
+<section id="results">
+    <h2>Results</h2>
+    <p class="section-desc">Training and evaluation on BCI Competition IV-2a dataset (9 subjects, 4-class motor imagery).</p>
+
+    <div class="fig">
+        <img src="assets/training_curves.png" alt="Training Curves" />
+        <div class="caption">Cross-subject pre-training on subjects 1-8 with PyTorch + CUDA. Best validation accuracy: 43% (chance level: 25%). Early stopping at epoch ~120.</div>
+    </div>
+
+    <div class="grid-2">
+        <div class="fig">
+            <img src="assets/confusion_matrix.png" alt="Confusion Matrix" />
+            <div class="caption">Cross-subject confusion matrix. Forward and Right are best classified. Left/Stop confusion is expected -- both involve subtle imagery patterns.</div>
+        </div>
+        <div class="fig">
+            <img src="assets/calibration_impact.png" alt="Calibration Impact" />
+            <div class="caption">Per-class accuracy before and after personal calibration (SITL, subject 9). All classes improve. Real EEG calibration is expected to reach 75-85%.</div>
+        </div>
+    </div>
+
+    <div class="fig">
+        <img src="assets/latency_breakdown.png" alt="Latency Breakdown" />
+        <div class="caption">Per-component latency profile. EEGNet inference dominates at 4ms. Total pipeline uses 7.9ms of the 500ms budget -- 98.4% headroom.</div>
+    </div>
+</section>
+
+<hr class="divider">
+
+<!-- SAFETY -->
+<section id="safety">
+    <h2>Safety System</h2>
+    <p class="section-desc">Three independent layers. Any single layer can stop the wheelchair.</p>
+
+    <table class="data-table">
+        <tr><th>Layer</th><th>Location</th><th>Mechanisms</th></tr>
+        <tr>
+            <td>Software</td>
+            <td>Node 1 + 2</td>
+            <td>Confidence threshold (40%), majority vote (window=3), heartbeat timeout (3s), speed limiter</td>
+        </tr>
+        <tr>
+            <td>Firmware</td>
+            <td>Node 3 (Arduino)</td>
+            <td>Serial watchdog (2s), battery cutoff (10.5V), PWM ramp limiting, state validation</td>
+        </tr>
+        <tr>
+            <td>Hardware</td>
+            <td>Electrical</td>
+            <td>Physical E-stop button wired directly to motor driver enable -- bypasses all software</td>
+        </tr>
+    </table>
+
+    <!-- Motor imagery mapping -->
+    <h2 style="margin-top: 3rem;">Motor Imagery Mapping</h2>
+    <p class="section-desc">Motor imagery activates the opposite hemisphere (contralateral control).</p>
+
+    <table class="data-table">
+        <tr><th>Imagery</th><th>Command</th><th>Action</th><th>EEG Source</th></tr>
+        <tr><td>Right hand</td><td>L</td><td>Steer left</td><td>C4 ERD (contralateral)</td></tr>
+        <tr><td>Left hand</td><td>R</td><td>Steer right</td><td>C3 ERD (contralateral)</td></tr>
+        <tr><td>Feet</td><td>F</td><td>Forward</td><td>Cz ERD (medial cortex)</td></tr>
+        <tr><td>Tongue</td><td>S</td><td>Stop</td><td>Broad cortical pattern</td></tr>
+    </table>
+</section>
+
+<hr class="divider">
+
+<!-- QUICK START -->
+<section>
+    <h2>Quick Start</h2>
+    <p class="section-desc">All software runs on a standard development PC with an NVIDIA GPU.</p>
+    <div class="pipeline" style="line-height: 2.2;">
+        <span class="detail">$</span> <span class="stage">git clone</span> https://github.com/Bumply/bitirme.git NeuroDrive<br>
+        <span class="detail">$</span> <span class="stage">cd</span> NeuroDrive<br>
+        <span class="detail">$</span> <span class="stage">pip install</span> torch torchvision --index-url https://download.pytorch.org/whl/cu121<br>
+        <span class="detail">$</span> <span class="stage">pip install</span> moabb mne numpy scipy scikit-learn matplotlib onnx nicegui pyserial<br>
+        <br>
+        <span class="detail">$</span> <span class="stage">python</span> node1_sitl_pipeline.py &nbsp;&nbsp;<span class="detail"># test DSP with replayed EEG</span><br>
+        <span class="detail">$</span> <span class="stage">python</span> node1_training.py &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="detail"># train EEGNet (needs GPU)</span><br>
+        <span class="detail">$</span> <span class="stage">python</span> node1_calibrate.py &nbsp;&nbsp;&nbsp;&nbsp;<span class="detail"># personal fine-tuning</span><br>
+        <span class="detail">$</span> <span class="stage">python</span> node1_inference.py &nbsp;&nbsp;&nbsp;&nbsp;<span class="detail"># real-time SITL inference</span><br>
+        <span class="detail">$</span> <span class="stage">python</span> node2_dashboard.py &nbsp;&nbsp;&nbsp;&nbsp;<span class="detail"># dashboard at localhost:8080</span><br>
+        <span class="detail">$</span> <span class="stage">python</span> bench_test.py &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="detail"># run all tests</span>
+    </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+    <p>NeuroDrive &middot; <a href="https://github.com/Bumply/bitirme">GitHub</a> &middot; MIT License</p>
+</footer>
+
+</body>
+</html>
