@@ -139,6 +139,44 @@
         .callout.success { border-left-color: #3fb950; }
         .callout strong { color: #f0f6fc; }
 
+        /* --- GOALS --- */
+        .goal-card {
+            background: #161b22; border: 1px solid #30363d;
+            border-radius: 8px; padding: 18px 20px; margin-bottom: 12px;
+        }
+        .goal-card .goal-head {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            gap: 12px; margin-bottom: 6px;
+        }
+        .goal-card .goal-id {
+            font-family: 'Cascadia Code', 'Fira Code', monospace;
+            color: #58a6ff; font-weight: 700; font-size: 0.9rem;
+        }
+        .goal-card .goal-title { color: #f0f6fc; font-weight: 600; font-size: 0.95rem; flex: 1; }
+        .goal-card .goal-body { color: #8b949e; font-size: 0.88rem; margin-top: 4px; }
+        .goal-card .goal-accept {
+            color: #c9d1d9; font-size: 0.85rem; margin-top: 6px;
+            border-left: 2px solid #30363d; padding-left: 10px;
+        }
+        .badge {
+            display: inline-block; padding: 2px 10px; border-radius: 12px;
+            font-size: 0.72rem; font-weight: 600; white-space: nowrap;
+        }
+        .badge.done { background: rgba(63,185,80,0.15); color: #3fb950; border: 1px solid rgba(63,185,80,0.4); }
+        .badge.wip  { background: rgba(240,136,62,0.15); color: #f0883e; border: 1px solid rgba(240,136,62,0.4); }
+        .badge.todo { background: rgba(139,148,158,0.12); color: #8b949e; border: 1px solid rgba(139,148,158,0.3); }
+        .goal-group-title {
+            color: #58a6ff; font-size: 1.05rem; font-weight: 700;
+            margin: 1.5rem 0 0.75rem; letter-spacing: 0.3px;
+        }
+        .goal-summary {
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            gap: 1rem; margin-bottom: 2rem;
+        }
+        .goal-summary .stat-card .number.done { color: #3fb950; }
+        .goal-summary .stat-card .number.wip  { color: #f0883e; }
+        .goal-summary .stat-card .number.todo { color: #8b949e; }
+
         /* --- FOOTER --- */
         footer {
             text-align: center; padding: 40px 2rem; color: #484f58;
@@ -162,6 +200,7 @@
             <a href="#calibration">Calibration</a>
             <a href="#safety">Safety</a>
             <a href="#dashboard">Dashboard</a>
+            <a href="#goals">Goals</a>
             <a href="https://github.com/Bumply/bitirme">GitHub</a>
         </div>
     </div>
@@ -617,6 +656,256 @@
         <span class="detail">$</span> <span class="stage">python</span> node1_inference.py &nbsp;&nbsp;&nbsp;&nbsp;<span class="detail"># 4. real-time SITL inference with vote smoothing</span><br>
         <span class="detail">$</span> <span class="stage">python</span> node2_dashboard.py &nbsp;&nbsp;&nbsp;&nbsp;<span class="detail"># 5. launch dashboard at localhost:8080</span><br>
         <span class="detail">$</span> <span class="stage">python</span> bench_test.py &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="detail"># 6. run full automated test suite (5 tests)</span>
+    </div>
+</section>
+
+<hr class="divider">
+
+<!-- ================================================================ -->
+<!-- TECHNICAL GOALS -->
+<!-- ================================================================ -->
+<section id="goals">
+    <h2>Technical Goals & Milestones</h2>
+    <p class="section-desc">Concrete, measurable engineering goals with explicit acceptance criteria. Status is tracked weekly. Final delivery target: 1 month from project start. Full document on <a href="TECHNICAL_GOALS.md" style="color:#58a6ff">GitHub</a>.</p>
+
+    <div class="goal-summary">
+        <div class="stat-card">
+            <div class="number done">4</div>
+            <div class="label">Done</div>
+        </div>
+        <div class="stat-card">
+            <div class="number wip">12</div>
+            <div class="label">In Progress</div>
+        </div>
+        <div class="stat-card">
+            <div class="number todo">7</div>
+            <div class="label">Planned</div>
+        </div>
+    </div>
+
+    <div class="goal-group-title">1. Mechanical & Power Integration</div>
+
+    <div class="goal-card">
+        <div class="goal-head">
+            <div><span class="goal-id">G1.1</span> &nbsp; <span class="goal-title">Functional electric wheelchair platform</span></div>
+            <span class="badge wip">IN PROGRESS</span>
+        </div>
+        <div class="goal-body">Self-propelled chassis with 48V hub motor (drive) and 24V geared DC motor at 12V (steering).</div>
+        <div class="goal-accept"><strong>Accept:</strong> Carries an adult on flat ground, moves under power, can be steered.</div>
+    </div>
+
+    <div class="goal-card">
+        <div class="goal-head">
+            <div><span class="goal-id">G1.2</span> &nbsp; <span class="goal-title">Single-source power architecture</span></div>
+            <span class="badge wip">IN PROGRESS</span>
+        </div>
+        <div class="goal-body">All electronics powered from one 48V battery via DC-DC conversion. One master switch isolates everything.</div>
+        <div class="goal-accept"><strong>Accept:</strong> 48V → motor controller, 48V → 12V buck → H-bridge + Arduino, 12V → 5V → Coral + Pi.</div>
+    </div>
+
+    <div class="goal-card">
+        <div class="goal-head">
+            <div><span class="goal-id">G1.3</span> &nbsp; <span class="goal-title">Mechanical steering limits</span></div>
+            <span class="badge todo">PLANNED</span>
+        </div>
+        <div class="goal-body">Two lever microswitches at full-left and full-right end positions. Firmware disables further commands once triggered.</div>
+        <div class="goal-accept"><strong>Accept:</strong> Steering motor cannot over-rotate beyond mechanical safe range.</div>
+    </div>
+
+    <div class="goal-group-title">2. Embedded Hardware</div>
+
+    <div class="goal-card">
+        <div class="goal-head">
+            <div><span class="goal-id">G2.1</span> &nbsp; <span class="goal-title">Three-node distributed system</span></div>
+            <span class="badge wip">IN PROGRESS</span>
+        </div>
+        <div class="goal-body">Coral Dev Board Mini ↔ Raspberry Pi 5 ↔ Arduino Mega 2560.</div>
+        <div class="goal-accept"><strong>Accept:</strong> All three boot from cold, exchange messages, run a 30-min continuous session with no resets.</div>
+    </div>
+
+    <div class="goal-card">
+        <div class="goal-head">
+            <div><span class="goal-id">G2.2</span> &nbsp; <span class="goal-title">ADS1299 8-channel EEG acquisition</span></div>
+            <span class="badge todo">PLANNED</span>
+        </div>
+        <div class="goal-body">8 channels of 24-bit EEG at 250 SPS via SPI on the Coral.</div>
+        <div class="goal-accept"><strong>Accept:</strong> 5-min continuous capture with no missed samples; lead-off detection working; signal viewable in dashboard.</div>
+    </div>
+
+    <div class="goal-card">
+        <div class="goal-head">
+            <div><span class="goal-id">G2.3</span> &nbsp; <span class="goal-title">Edge TPU model deployment</span></div>
+            <span class="badge wip">IN PROGRESS</span>
+        </div>
+        <div class="goal-body">Run personalized EEGNet on Coral Edge TPU (not CPU).</div>
+        <div class="goal-accept"><strong>Accept:</strong> int8 TFLite model compiled with edgetpu_compiler, ≤ 10 ms per inference on Edge TPU delegate.</div>
+    </div>
+
+    <div class="goal-group-title">3. Signal Processing & Machine Learning</div>
+
+    <div class="goal-card">
+        <div class="goal-head">
+            <div><span class="goal-id">G3.1</span> &nbsp; <span class="goal-title">Real-time DSP chain</span></div>
+            <span class="badge done">DONE</span>
+        </div>
+        <div class="goal-body">50 Hz notch (Q=30) + 8-30 Hz Butterworth bandpass (order 4) per channel.</div>
+        <div class="goal-accept"><strong>Accept:</strong> Window of 250 × 8 processed in &lt; 1 ms; passband response within ±1 dB of design.</div>
+    </div>
+
+    <div class="goal-card">
+        <div class="goal-head">
+            <div><span class="goal-id">G3.2</span> &nbsp; <span class="goal-title">Pre-trained EEGNet on BCI-IV-2a</span></div>
+            <span class="badge done">DONE</span>
+        </div>
+        <div class="goal-body">EEGNet (1,684 params) trained on motor imagery dataset, 8 subjects.</div>
+        <div class="goal-accept"><strong>Accept:</strong> Cross-subject accuracy &gt; 40 % (chance = 25 %); ONNX + TFLite exports working.</div>
+    </div>
+
+    <div class="goal-card">
+        <div class="goal-head">
+            <div><span class="goal-id">G3.3</span> &nbsp; <span class="goal-title">Personal calibration protocol</span></div>
+            <span class="badge wip">IN PROGRESS</span>
+        </div>
+        <div class="goal-body">100-trial guided session with frozen-block fine-tuning.</div>
+        <div class="goal-accept"><strong>Accept:</strong> Subject-specific accuracy &gt; 55 % post-calibration; Block 1+2 frozen with BatchNorm in eval mode.</div>
+    </div>
+
+    <div class="goal-card">
+        <div class="goal-head">
+            <div><span class="goal-id">G3.4</span> &nbsp; <span class="goal-title">Online adaptation</span></div>
+            <span class="badge wip">IN PROGRESS</span>
+        </div>
+        <div class="goal-body">Pseudo-label accumulation + micro fine-tunes during normal use.</div>
+        <div class="goal-accept"><strong>Accept:</strong> Trigger every 50 high-confidence (&gt;80 %) windows; accuracy does not degrade by &gt;5 pp over a 30-min session.</div>
+    </div>
+
+    <div class="goal-group-title">4. Real-Time Pipeline</div>
+
+    <div class="goal-card">
+        <div class="goal-head">
+            <div><span class="goal-id">G4.1</span> &nbsp; <span class="goal-title">End-to-end latency budget</span></div>
+            <span class="badge todo">PLANNED</span>
+        </div>
+        <div class="goal-body">Time from EEG sample acquisition to motor PWM update on real hardware.</div>
+        <div class="goal-accept"><strong>Accept:</strong> &lt; 50 ms p95 latency, measured with timestamps or logic analyzer (not SITL).</div>
+    </div>
+
+    <div class="goal-card">
+        <div class="goal-head">
+            <div><span class="goal-id">G4.2</span> &nbsp; <span class="goal-title">Confidence gating + vote smoothing</span></div>
+            <span class="badge done">DONE</span>
+        </div>
+        <div class="goal-body">Reject low-confidence predictions; majority vote across recent windows.</div>
+        <div class="goal-accept"><strong>Accept:</strong> Predictions &lt; 40 % confidence ignored; final command is majority over last 3 high-conf windows.</div>
+    </div>
+
+    <div class="goal-group-title">5. Software Architecture</div>
+
+    <div class="goal-card">
+        <div class="goal-head">
+            <div><span class="goal-id">G5.1</span> &nbsp; <span class="goal-title">Modular Python package</span></div>
+            <span class="badge wip">IN PROGRESS</span>
+        </div>
+        <div class="goal-body">Refactor monolithic prototype into a clean <code>neurodrive</code> package.</div>
+        <div class="goal-accept"><strong>Accept:</strong> Each component is a separate module with single responsibility; entry-point scripts &lt; 200 lines each.</div>
+    </div>
+
+    <div class="goal-card">
+        <div class="goal-head">
+            <div><span class="goal-id">G5.2</span> &nbsp; <span class="goal-title">Automated test suite</span></div>
+            <span class="badge wip">IN PROGRESS</span>
+        </div>
+        <div class="goal-body">Pytest-based regression tests.</div>
+        <div class="goal-accept"><strong>Accept:</strong> ≥ 10 tests covering DSP, model I/O, smoother, safety state transitions, and network protocol; all passing.</div>
+    </div>
+
+    <div class="goal-group-title">6. User Interface</div>
+
+    <div class="goal-card">
+        <div class="goal-head">
+            <div><span class="goal-id">G6.1</span> &nbsp; <span class="goal-title">Web dashboard over WiFi</span></div>
+            <span class="badge wip">IN PROGRESS</span>
+        </div>
+        <div class="goal-body">Coral runs as a WiFi access point hosting a NiceGUI dashboard.</div>
+        <div class="goal-accept"><strong>Accept:</strong> User connects to "NeuroDrive" SSID, opens dashboard URL, sees live EEG and current command.</div>
+    </div>
+
+    <div class="goal-card">
+        <div class="goal-head">
+            <div><span class="goal-id">G6.2</span> &nbsp; <span class="goal-title">Three functional tabs</span></div>
+            <span class="badge wip">IN PROGRESS</span>
+        </div>
+        <div class="goal-body">Drive (real-time control), Calibrate (cue protocol), Settings (configuration).</div>
+        <div class="goal-accept"><strong>Accept:</strong> All three work end-to-end, including the visual cue session and config persistence.</div>
+    </div>
+
+    <div class="goal-group-title">7. Safety</div>
+
+    <div class="goal-card">
+        <div class="goal-head">
+            <div><span class="goal-id">G7.1</span> &nbsp; <span class="goal-title">Hardware E-stop</span></div>
+            <span class="badge todo">PLANNED</span>
+        </div>
+        <div class="goal-body">Physical button electrically cuts power to motor drivers, independent of all software.</div>
+        <div class="goal-accept"><strong>Accept:</strong> Pressing the button stops both motors within 100 ms even if all microcontrollers are frozen.</div>
+    </div>
+
+    <div class="goal-card">
+        <div class="goal-head">
+            <div><span class="goal-id">G7.2</span> &nbsp; <span class="goal-title">Multi-layer software watchdogs</span></div>
+            <span class="badge wip">IN PROGRESS</span>
+        </div>
+        <div class="goal-body">Each communication link has an independent timeout that triggers STOP.</div>
+        <div class="goal-accept"><strong>Accept:</strong> Coral → Pi heartbeat (3 s), Pi → Arduino serial (2 s); both verified by killing the upstream node.</div>
+    </div>
+
+    <div class="goal-card">
+        <div class="goal-head">
+            <div><span class="goal-id">G7.3</span> &nbsp; <span class="goal-title">Battery undervoltage cutoff</span></div>
+            <span class="badge wip">IN PROGRESS</span>
+        </div>
+        <div class="goal-body">Auto-stop before battery damage.</div>
+        <div class="goal-accept"><strong>Accept:</strong> Arduino reads battery rail via voltage divider; warning at threshold-1, motor cutoff at threshold-2; verified with bench supply sweep.</div>
+    </div>
+
+    <div class="goal-group-title">8. Demonstration</div>
+
+    <div class="goal-card">
+        <div class="goal-head">
+            <div><span class="goal-id">G8.1</span> &nbsp; <span class="goal-title">BCI-controlled drive</span></div>
+            <span class="badge todo">PLANNED</span>
+        </div>
+        <div class="goal-body">Live demo: user controls the wheelchair using motor imagery alone.</div>
+        <div class="goal-accept"><strong>Accept:</strong> After one calibration session, user navigates a basic course (forward, turn, stop) using BCI commands only.</div>
+    </div>
+
+    <div class="goal-card">
+        <div class="goal-head">
+            <div><span class="goal-id">G8.2</span> &nbsp; <span class="goal-title">Manual override</span></div>
+            <span class="badge done">DONE</span>
+        </div>
+        <div class="goal-body">D-pad on dashboard always preempts BCI commands.</div>
+        <div class="goal-accept"><strong>Accept:</strong> While in EEG mode, pressing a D-pad button overrides the next BCI command and holds until released.</div>
+    </div>
+
+    <div class="goal-group-title">9. Documentation</div>
+
+    <div class="goal-card">
+        <div class="goal-head">
+            <div><span class="goal-id">G9.1</span> &nbsp; <span class="goal-title">GitHub Pages site</span></div>
+            <span class="badge wip">IN PROGRESS</span>
+        </div>
+        <div class="goal-body">Public-facing site documenting architecture, signal pipeline, ML model, calibration, safety, and these goals.</div>
+        <div class="goal-accept"><strong>Accept:</strong> All sections complete with figures and metrics; goals page reflects current status.</div>
+    </div>
+
+    <div class="goal-card">
+        <div class="goal-head">
+            <div><span class="goal-id">G9.2</span> &nbsp; <span class="goal-title">Reproducible setup</span></div>
+            <span class="badge wip">IN PROGRESS</span>
+        </div>
+        <div class="goal-body">Fresh git clone + <code>pip install</code> runnable on Windows, Linux, and Coral.</div>
+        <div class="goal-accept"><strong>Accept:</strong> Quick-start commands succeed on a clean environment without manual fixes.</div>
     </div>
 </section>
 
