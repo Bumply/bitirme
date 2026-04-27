@@ -228,8 +228,8 @@
             <div class="label">EEG Channels (24-bit)</div>
         </div>
         <div class="stat-card">
-            <div class="number">&lt;10ms</div>
-            <div class="label">End-to-End Latency</div>
+            <div class="number">4</div>
+            <div class="label">Motor-Imagery Commands</div>
         </div>
         <div class="stat-card">
             <div class="number">1,684</div>
@@ -283,7 +283,7 @@
         </div>
         <div class="node-card n3">
             <h3>Node 3: Arduino Mega 2560</h3>
-            <div class="hw">ATmega2560 + L298N H-Bridge</div>
+            <div class="hw">ATmega2560 + MCP4725 DAC + BTS7960 H-Bridge</div>
             <ul>
                 <li>6-state finite state machine</li>
                 <li>Smooth PWM ramp engine (step=5, 20ms)</li>
@@ -387,7 +387,7 @@
 
     <div class="fig">
         <img src="assets/latency_breakdown.png" alt="Latency Breakdown" />
-        <div class="caption">Per-component latency breakdown. The full pipeline uses 7.9ms of the 500ms budget, leaving 98.4% headroom. EEGNet inference is the dominant cost at 4ms.</div>
+        <div class="caption">Per-component latency budget. Each window has 500 ms before the next prediction is needed (2 Hz inference rate), so even with WiFi and serial overhead the pipeline runs well within budget. EEGNet inference on the Edge TPU is the dominant compute cost.</div>
     </div>
 </section>
 
@@ -462,14 +462,14 @@
         </div>
         <div class="fig">
             <img src="assets/command_distribution.png" alt="Command Distribution" />
-            <div class="caption">Predicted vs true command distribution during SITL inference. The model shows slight bias toward Forward and Right. Confidence gating filters out low-quality predictions.</div>
+            <div class="caption">Predicted vs true command distribution during inference. The model shows slight bias toward Forward and Right. Confidence gating filters out low-quality predictions.</div>
         </div>
     </div>
 
     <h3>Personal Fine-Tuning</h3>
     <div class="fig">
         <img src="assets/finetuning_curves.png" alt="Fine-Tuning Curves" />
-        <div class="caption">Fine-tuning on subject 9 data with frozen Blocks 1+2. Starting from 43% base accuracy, personal calibration reaches 56% in SITL. With real personal EEG data (stronger signal, better electrode contact), we expect 75-85%.</div>
+        <div class="caption">Fine-tuning on held-out subject data with frozen Blocks 1+2. The model adapts to individual patterns by training only Block 3 and the classifier head. Expected post-calibration accuracy with proper electrode setup is 60-75%.</div>
     </div>
 
     <div class="fig">
@@ -614,54 +614,6 @@
 <hr class="divider">
 
 <!-- ================================================================ -->
-<!-- PERFORMANCE SUMMARY -->
-<!-- ================================================================ -->
-<section>
-    <h2>Performance Summary</h2>
-
-    <table class="data-table">
-        <tr><th>Metric</th><th>Value</th><th>Notes</th></tr>
-        <tr><td>Sampling rate</td><td>250 SPS x 8ch</td><td>ADS1299 24-bit ADC, VREF=2.64V</td></tr>
-        <tr><td>ADC resolution</td><td>24-bit</td><td>LSB = (2/24)/(2^24-1) * VREF</td></tr>
-        <tr><td>DSP latency</td><td>&lt;1ms</td><td>IIR notch + Butterworth bandpass</td></tr>
-        <tr><td>Inference latency</td><td>~4ms GPU / ~2-5ms Edge TPU</td><td>1,684 parameter int8 model</td></tr>
-        <tr><td>End-to-end latency</td><td>&lt;10ms</td><td>SPI read to UDP command output</td></tr>
-        <tr><td>Budget headroom</td><td>492ms / 500ms (98.4%)</td><td>Classification every 500ms window</td></tr>
-        <tr><td>Cross-subject accuracy</td><td>43%</td><td>4-class, chance=25%, 8 training subjects</td></tr>
-        <tr><td>After calibration</td><td>56% (SITL)</td><td>Target 75-85% with real personal EEG</td></tr>
-        <tr><td>Confidence threshold</td><td>40%</td><td>Below threshold = hold current command</td></tr>
-        <tr><td>Vote smoothing</td><td>Window=3</td><td>Majority vote prevents single-window jitter</td></tr>
-        <tr><td>Heartbeat timeout</td><td>3 seconds</td><td>Auto-stop if Node 1 goes silent</td></tr>
-        <tr><td>Watchdog timeout</td><td>2 seconds</td><td>Arduino auto-stop if no serial input</td></tr>
-        <tr><td>Battery cutoff</td><td>10.5V (warn at 11V)</td><td>Voltage divider on A0, ratio 5.7</td></tr>
-        <tr><td>Bench tests</td><td>5/5 passing</td><td>Full pipeline, failsafe, E-stop, smoother, serial</td></tr>
-    </table>
-</section>
-
-<hr class="divider">
-
-<!-- QUICK START -->
-<section>
-    <h2>Quick Start</h2>
-    <p class="section-desc">All software runs in SITL mode on a standard development PC with an NVIDIA GPU. No hardware required to test.</p>
-    <div class="pipeline" style="line-height: 2.2;">
-        <span class="detail">$</span> <span class="stage">git clone</span> https://github.com/Bumply/bitirme.git NeuroDrive<br>
-        <span class="detail">$</span> <span class="stage">cd</span> NeuroDrive<br>
-        <span class="detail">$</span> <span class="stage">pip install</span> torch torchvision --index-url https://download.pytorch.org/whl/cu121<br>
-        <span class="detail">$</span> <span class="stage">pip install</span> moabb mne numpy scipy scikit-learn matplotlib onnx nicegui pyserial<br>
-        <br>
-        <span class="detail">$</span> <span class="stage">python</span> node1_sitl_pipeline.py &nbsp;&nbsp;<span class="detail"># 1. test DSP with replayed BCI-IV-2a EEG</span><br>
-        <span class="detail">$</span> <span class="stage">python</span> node1_training.py &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="detail"># 2. train EEGNet on 8 subjects (needs GPU)</span><br>
-        <span class="detail">$</span> <span class="stage">python</span> node1_calibrate.py &nbsp;&nbsp;&nbsp;&nbsp;<span class="detail"># 3. fine-tune on subject 9 (SITL stand-in)</span><br>
-        <span class="detail">$</span> <span class="stage">python</span> node1_inference.py &nbsp;&nbsp;&nbsp;&nbsp;<span class="detail"># 4. real-time SITL inference with vote smoothing</span><br>
-        <span class="detail">$</span> <span class="stage">python</span> node2_dashboard.py &nbsp;&nbsp;&nbsp;&nbsp;<span class="detail"># 5. launch dashboard at localhost:8080</span><br>
-        <span class="detail">$</span> <span class="stage">python</span> bench_test.py &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="detail"># 6. run full automated test suite (5 tests)</span>
-    </div>
-</section>
-
-<hr class="divider">
-
-<!-- ================================================================ -->
 <!-- CAPABILITIES -->
 <!-- ================================================================ -->
 <section id="capabilities">
@@ -703,7 +655,7 @@
         <tr><td>Quantization</td><td>int8 TFLite (Edge TPU)</td></tr>
         <tr><td>Training set</td><td>BCI-IV-2a (8 subjects, motor imagery)</td></tr>
         <tr><td>Cross-subject accuracy</td><td>43 % (chance = 25 %)</td></tr>
-        <tr><td>Personal calibration accuracy</td><td>56 % (SITL) — target 75 - 85 % with real EEG</td></tr>
+        <tr><td>Personal calibration accuracy</td><td>Target 60 - 75 % (4-class) with proper electrode setup</td></tr>
         <tr><td>Fine-tuning strategy</td><td>Block 1+2 frozen, BatchNorm in eval mode</td></tr>
     </table>
 
@@ -711,10 +663,10 @@
     <table class="data-table">
         <tr><th>Parameter</th><th>Value</th></tr>
         <tr><td>Inference engine</td><td>Coral Edge TPU</td></tr>
-        <tr><td>Inference latency</td><td>~ 4 ms per window</td></tr>
-        <tr><td>End-to-end latency (SPI → PWM)</td><td>&lt; 10 ms (SITL)</td></tr>
-        <tr><td>Inference rate</td><td>2 Hz (one prediction every 0.5 s)</td></tr>
-        <tr><td>Time budget headroom</td><td>98.4 % (uses ~ 8 ms of 500 ms budget)</td></tr>
+        <tr><td>Inference latency target</td><td>≤ 10 ms per window on Edge TPU</td></tr>
+        <tr><td>End-to-end latency target</td><td>≤ 50 ms (EEG sample → motor PWM update)</td></tr>
+        <tr><td>Inference rate</td><td>2 Hz (one prediction every 0.5 s window)</td></tr>
+        <tr><td>Time budget</td><td>500 ms per window — leaves ample margin for processing</td></tr>
         <tr><td>Confidence gate</td><td>40 % minimum to issue a command</td></tr>
         <tr><td>Vote smoothing</td><td>Majority vote over 3 consecutive predictions</td></tr>
     </table>
@@ -793,7 +745,7 @@
     </table>
 
     <div class="callout">
-        <strong>Note on measurements:</strong> SITL-measured values are verified on a development PC. Real-hardware end-to-end latency is expected to remain &lt; 50 ms based on Edge TPU benchmarks. Personal calibration accuracy improves significantly with clean dry electrodes and a quiet recording environment.
+        <strong>Note on accuracy:</strong> Cross-subject accuracy is measured on the BCI-IV-2a dataset. Personal calibration accuracy depends strongly on electrode quality, signal cleanliness, and how strongly the user produces motor imagery — values listed are realistic targets, not guarantees.
     </div>
 </section>
 

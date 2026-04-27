@@ -40,8 +40,8 @@ A 3-node Brain-Computer Interface that reads motor imagery EEG, classifies it wi
 | Output | 4-class softmax (Forward, Left, Right, Stop) |
 | Quantization | int8 TFLite (Edge TPU compatible) |
 | Training set | BCI-IV-2a (8 subjects, motor imagery) |
-| Cross-subject accuracy | 43 % (4-class, chance = 25 %) |
-| Personal calibration accuracy | 56 % (SITL) — target 75 - 85 % with real personal EEG |
+| Cross-subject accuracy | 43 % (4-class, chance = 25 %) — measured on BCI-IV-2a |
+| Personal calibration accuracy | Target 60 - 75 % (4-class) with proper electrode setup |
 | Personal fine-tuning strategy | Block 1 + 2 frozen, BatchNorm in eval mode, only Block 3 + classifier trained |
 
 ## Real-Time Performance
@@ -49,10 +49,10 @@ A 3-node Brain-Computer Interface that reads motor imagery EEG, classifies it wi
 | Capability | Specification |
 |---|---|
 | Inference engine | Coral Edge TPU |
-| Inference latency | ~ 4 ms per window |
-| End-to-end latency (SPI → PWM) | < 10 ms (SITL measurement) |
+| Inference latency target | ≤ 10 ms per window on Edge TPU |
+| End-to-end latency target | ≤ 50 ms (EEG sample → motor PWM update) |
 | Inference rate | 2 Hz (one prediction every 0.5 s window) |
-| Time budget headroom | 98.4 % (uses ~ 8 ms of the 500 ms budget) |
+| Time budget | 500 ms per window — leaves ample margin for processing + WiFi + serial overhead |
 | Confidence gate | 40 % minimum confidence to issue a command |
 | Vote smoothing | Majority vote over 3 consecutive predictions |
 
@@ -150,4 +150,4 @@ A 3-node Brain-Computer Interface that reads motor imagery EEG, classifies it wi
 
 ---
 
-*All SITL-measured values verified on a development PC with NVIDIA RTX 3060. End-to-end latency on the deployed Coral hardware is expected to remain < 50 ms based on Edge TPU inference benchmarks. Personal calibration accuracy improves significantly when using clean dry electrodes and a quiet recording environment.*
+*Cross-subject accuracy is measured on the BCI-IV-2a public dataset. Personal calibration accuracy depends strongly on electrode quality, signal cleanliness, and how strongly the user produces motor imagery — listed values are realistic targets, not guarantees. Latency targets account for ADS1299 SPI read, DSP, Edge TPU inference, UDP over WiFi, and Arduino serial response.*
