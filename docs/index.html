@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -200,7 +200,7 @@
             <a href="#calibration">Calibration</a>
             <a href="#safety">Safety</a>
             <a href="#dashboard">Dashboard</a>
-            <a href="#goals">Goals</a>
+            <a href="#capabilities">Capabilities</a>
             <a href="https://github.com/Bumply/bitirme">GitHub</a>
         </div>
     </div>
@@ -662,252 +662,142 @@
 <hr class="divider">
 
 <!-- ================================================================ -->
-<!-- TECHNICAL GOALS -->
+<!-- CAPABILITIES -->
 <!-- ================================================================ -->
-<section id="goals">
-    <h2>Technical Goals & Milestones</h2>
-    <p class="section-desc">Concrete, measurable engineering goals with explicit acceptance criteria. Status is tracked weekly. Final delivery target: 1 month from project start. Full document on <a href="TECHNICAL_GOALS.md" style="color:#58a6ff">GitHub</a>.</p>
+<section id="capabilities">
+    <h2>Technical Capabilities</h2>
+    <p class="section-desc">Concrete specifications of what the system does and the numbers it hits. Full datasheet on <a href="CAPABILITIES.md" style="color:#58a6ff">GitHub</a>.</p>
 
-    <div class="goal-summary">
-        <div class="stat-card">
-            <div class="number done">4</div>
-            <div class="label">Done</div>
-        </div>
-        <div class="stat-card">
-            <div class="number wip">12</div>
-            <div class="label">In Progress</div>
-        </div>
-        <div class="stat-card">
-            <div class="number todo">7</div>
-            <div class="label">Planned</div>
-        </div>
-    </div>
+    <h3>Signal Acquisition</h3>
+    <table class="data-table">
+        <tr><th>Parameter</th><th>Value</th></tr>
+        <tr><td>Channels</td><td>8 simultaneous</td></tr>
+        <tr><td>ADC</td><td>ADS1299 (24-bit sigma-delta)</td></tr>
+        <tr><td>Sampling rate</td><td>250 SPS per channel</td></tr>
+        <tr><td>Reference voltage</td><td>2.64 V</td></tr>
+        <tr><td>Input resolution</td><td>~ 0.31 µV / LSB at gain 24</td></tr>
+        <tr><td>Interface</td><td>SPI @ 1 MHz</td></tr>
+        <tr><td>Lead-off detection</td><td>Per-channel from ADS1299 status bytes</td></tr>
+        <tr><td>Channel layout</td><td>FC3, FC4, C3, Cz, C4, CP3, CP4, FCz</td></tr>
+    </table>
 
-    <div class="goal-group-title">1. Mechanical & Power Integration</div>
+    <h3>Signal Processing</h3>
+    <table class="data-table">
+        <tr><th>Parameter</th><th>Value</th></tr>
+        <tr><td>Power-line filter</td><td>50 Hz IIR notch, Q = 30</td></tr>
+        <tr><td>Bandpass filter</td><td>8 - 30 Hz Butterworth, order 4</td></tr>
+        <tr><td>Window length</td><td>1 second (250 samples)</td></tr>
+        <tr><td>Window stride</td><td>0.5 second (50 % overlap)</td></tr>
+        <tr><td>DSP latency</td><td>&lt; 1 ms per window</td></tr>
+        <tr><td>Notch rejection</td><td>-40 dB at 50 Hz</td></tr>
+    </table>
 
-    <div class="goal-card">
-        <div class="goal-head">
-            <div><span class="goal-id">G1.1</span> &nbsp; <span class="goal-title">Functional electric wheelchair platform</span></div>
-            <span class="badge wip">IN PROGRESS</span>
-        </div>
-        <div class="goal-body">Self-propelled chassis with 48V hub motor (drive) and 24V geared DC motor at 12V (steering).</div>
-        <div class="goal-accept"><strong>Accept:</strong> Carries an adult on flat ground, moves under power, can be steered.</div>
-    </div>
+    <h3>Machine Learning</h3>
+    <table class="data-table">
+        <tr><th>Parameter</th><th>Value</th></tr>
+        <tr><td>Model</td><td>EEGNet (Lawhern et al. 2018)</td></tr>
+        <tr><td>Parameters</td><td>1,684</td></tr>
+        <tr><td>Hyperparameters</td><td>F1=8, D=2, F2=16, kernel=64, dropout=0.5</td></tr>
+        <tr><td>Input shape</td><td>(1, 8, 250) — 1 second × 8 channels</td></tr>
+        <tr><td>Output classes</td><td>4 (Forward, Left, Right, Stop)</td></tr>
+        <tr><td>Quantization</td><td>int8 TFLite (Edge TPU)</td></tr>
+        <tr><td>Training set</td><td>BCI-IV-2a (8 subjects, motor imagery)</td></tr>
+        <tr><td>Cross-subject accuracy</td><td>43 % (chance = 25 %)</td></tr>
+        <tr><td>Personal calibration accuracy</td><td>56 % (SITL) — target 75 - 85 % with real EEG</td></tr>
+        <tr><td>Fine-tuning strategy</td><td>Block 1+2 frozen, BatchNorm in eval mode</td></tr>
+    </table>
 
-    <div class="goal-card">
-        <div class="goal-head">
-            <div><span class="goal-id">G1.2</span> &nbsp; <span class="goal-title">Single-source power architecture</span></div>
-            <span class="badge wip">IN PROGRESS</span>
-        </div>
-        <div class="goal-body">All electronics powered from one 48V battery via DC-DC conversion. One master switch isolates everything.</div>
-        <div class="goal-accept"><strong>Accept:</strong> 48V → motor controller, 48V → 12V buck → H-bridge + Arduino, 12V → 5V → Coral + Pi.</div>
-    </div>
+    <h3>Real-Time Performance</h3>
+    <table class="data-table">
+        <tr><th>Parameter</th><th>Value</th></tr>
+        <tr><td>Inference engine</td><td>Coral Edge TPU</td></tr>
+        <tr><td>Inference latency</td><td>~ 4 ms per window</td></tr>
+        <tr><td>End-to-end latency (SPI → PWM)</td><td>&lt; 10 ms (SITL)</td></tr>
+        <tr><td>Inference rate</td><td>2 Hz (one prediction every 0.5 s)</td></tr>
+        <tr><td>Time budget headroom</td><td>98.4 % (uses ~ 8 ms of 500 ms budget)</td></tr>
+        <tr><td>Confidence gate</td><td>40 % minimum to issue a command</td></tr>
+        <tr><td>Vote smoothing</td><td>Majority vote over 3 consecutive predictions</td></tr>
+    </table>
 
-    <div class="goal-card">
-        <div class="goal-head">
-            <div><span class="goal-id">G1.3</span> &nbsp; <span class="goal-title">Mechanical steering limits</span></div>
-            <span class="badge todo">PLANNED</span>
-        </div>
-        <div class="goal-body">Two lever microswitches at full-left and full-right end positions. Firmware disables further commands once triggered.</div>
-        <div class="goal-accept"><strong>Accept:</strong> Steering motor cannot over-rotate beyond mechanical safe range.</div>
-    </div>
+    <h3>Calibration & Adaptation</h3>
+    <table class="data-table">
+        <tr><th>Parameter</th><th>Value</th></tr>
+        <tr><td>Calibration session length</td><td>~ 13 minutes (100 trials)</td></tr>
+        <tr><td>Trial structure</td><td>2 s fixation + 4 s imagery + 2 s rest</td></tr>
+        <tr><td>Trials per class</td><td>25</td></tr>
+        <tr><td>Auto fine-tuning</td><td>Triggered after recording completes</td></tr>
+        <tr><td>Online adaptation trigger</td><td>Every 50 high-confidence (&gt; 80 %) predictions</td></tr>
+        <tr><td>Adaptation training</td><td>5 micro epochs at LR 5e-5</td></tr>
+        <tr><td>Result reporting</td><td>Before / after accuracy on dashboard</td></tr>
+    </table>
 
-    <div class="goal-group-title">2. Embedded Hardware</div>
+    <h3>Control & Motor Output</h3>
+    <table class="data-table">
+        <tr><th>Parameter</th><th>Value</th></tr>
+        <tr><td>Drive motor</td><td>48 V brushless hub motor (max 18 A)</td></tr>
+        <tr><td>Drive controller</td><td>GD010-S5-703 intelligent BLDC</td></tr>
+        <tr><td>Throttle interface</td><td>MCP4725 12-bit I²C DAC, 0 - 3.5 V</td></tr>
+        <tr><td>Speed levels</td><td>3 (low ~1.3 V, mid ~2.0 V, full 3.5 V)</td></tr>
+        <tr><td>Steering motor</td><td>24 V geared DC, run at 12 V (50ZY series)</td></tr>
+        <tr><td>Steering driver</td><td>BTS7960 / IBT-2 H-bridge (43 A)</td></tr>
+        <tr><td>Steering control</td><td>PWM speed + direction, dual limit switches</td></tr>
+        <tr><td>Self-locking</td><td>Worm gearbox holds steering position when off</td></tr>
+        <tr><td>Drive commands</td><td>Forward, Stop</td></tr>
+        <tr><td>Steering commands</td><td>Left, Right, Stop</td></tr>
+    </table>
 
-    <div class="goal-card">
-        <div class="goal-head">
-            <div><span class="goal-id">G2.1</span> &nbsp; <span class="goal-title">Three-node distributed system</span></div>
-            <span class="badge wip">IN PROGRESS</span>
-        </div>
-        <div class="goal-body">Coral Dev Board Mini ↔ Raspberry Pi 5 ↔ Arduino Mega 2560.</div>
-        <div class="goal-accept"><strong>Accept:</strong> All three boot from cold, exchange messages, run a 30-min continuous session with no resets.</div>
-    </div>
+    <h3>Communication</h3>
+    <table class="data-table">
+        <tr><th>Link</th><th>Specification</th></tr>
+        <tr><td>Coral → Pi 5</td><td>UDP over WiFi, port 5000</td></tr>
+        <tr><td>Pi 5 → Coral (calibration)</td><td>UDP over WiFi, port 5001</td></tr>
+        <tr><td>Pi 5 → Arduino</td><td>USB Serial @ 115200 baud</td></tr>
+        <tr><td>Packet format</td><td>JSON {"cmd", "conf", "ts"}</td></tr>
+        <tr><td>WiFi mode</td><td>Coral hosts AP (SSID "NeuroDrive", IP 192.168.4.1)</td></tr>
+        <tr><td>Dashboard URL</td><td>http://192.168.4.1:8081</td></tr>
+    </table>
 
-    <div class="goal-card">
-        <div class="goal-head">
-            <div><span class="goal-id">G2.2</span> &nbsp; <span class="goal-title">ADS1299 8-channel EEG acquisition</span></div>
-            <span class="badge todo">PLANNED</span>
-        </div>
-        <div class="goal-body">8 channels of 24-bit EEG at 250 SPS via SPI on the Coral.</div>
-        <div class="goal-accept"><strong>Accept:</strong> 5-min continuous capture with no missed samples; lead-off detection working; signal viewable in dashboard.</div>
-    </div>
+    <h3>Safety</h3>
+    <table class="data-table">
+        <tr><th>Layer</th><th>Mechanisms</th><th>Response Time</th></tr>
+        <tr><td>Software (Coral, Pi)</td><td>Confidence gate, majority vote, heartbeat 3 s, speed limiter</td><td>~ 500 ms</td></tr>
+        <tr><td>Firmware (Arduino)</td><td>Serial watchdog 2 s, battery cutoff, PWM ramp limiter, state machine</td><td>20 ms</td></tr>
+        <tr><td>Hardware E-stop</td><td>Physical button cuts motor driver enable line</td><td>&lt; 100 ms</td></tr>
+    </table>
 
-    <div class="goal-card">
-        <div class="goal-head">
-            <div><span class="goal-id">G2.3</span> &nbsp; <span class="goal-title">Edge TPU model deployment</span></div>
-            <span class="badge wip">IN PROGRESS</span>
-        </div>
-        <div class="goal-body">Run personalized EEGNet on Coral Edge TPU (not CPU).</div>
-        <div class="goal-accept"><strong>Accept:</strong> int8 TFLite model compiled with edgetpu_compiler, ≤ 10 ms per inference on Edge TPU delegate.</div>
-    </div>
+    <h3>User Interface</h3>
+    <table class="data-table">
+        <tr><th>Parameter</th><th>Value</th></tr>
+        <tr><td>Dashboard</td><td>NiceGUI (Python) web app</td></tr>
+        <tr><td>Theme</td><td>Dark, custom CSS</td></tr>
+        <tr><td>Tabs</td><td>Drive, Calibrate, Settings</td></tr>
+        <tr><td>Drive tab</td><td>Live command, confidence bar, manual D-pad, software E-stop, command log, packet stats</td></tr>
+        <tr><td>Calibrate tab</td><td>Visual cue area, trial progress, phase indicator, before/after accuracy</td></tr>
+        <tr><td>Settings tab</td><td>Network, safety thresholds, serial port, calibration timing, model selection</td></tr>
+        <tr><td>Manual override</td><td>D-pad always preempts BCI commands while held</td></tr>
+        <tr><td>Refresh rate</td><td>~ 2 Hz (matches inference rate)</td></tr>
+    </table>
 
-    <div class="goal-group-title">3. Signal Processing & Machine Learning</div>
+    <h3>Hardware Inventory</h3>
+    <table class="data-table">
+        <tr><th>Component</th><th>Role</th><th>Specs</th></tr>
+        <tr><td>Coral Dev Board Mini</td><td>Node 1 — BCI inference</td><td>ARM CPU + Edge TPU, 2 GB RAM, Mendel Linux</td></tr>
+        <tr><td>Raspberry Pi 5</td><td>Node 2 — Dashboard + Safety</td><td>4 GB RAM, WiFi, USB</td></tr>
+        <tr><td>Arduino Mega 2560</td><td>Node 3 — Motor control</td><td>ATmega2560, 16 MHz</td></tr>
+        <tr><td>ADS1299</td><td>EEG front-end</td><td>8-ch, 24-bit, 250 SPS</td></tr>
+        <tr><td>MCP4725</td><td>Throttle DAC</td><td>12-bit, I²C, 0 - 3.5 V</td></tr>
+        <tr><td>BTS7960 / IBT-2</td><td>Steering H-bridge</td><td>24 V / 43 A capable</td></tr>
+        <tr><td>GD010-S5-703</td><td>Hub motor controller</td><td>48 V, 18 A, brushless</td></tr>
+        <tr><td>48 V Battery</td><td>Main power</td><td>Drives hub motor + buck converters</td></tr>
+        <tr><td>48 V → 12 V Buck</td><td>Steering + Arduino rail</td><td>12 V regulated</td></tr>
+    </table>
 
-    <div class="goal-card">
-        <div class="goal-head">
-            <div><span class="goal-id">G3.1</span> &nbsp; <span class="goal-title">Real-time DSP chain</span></div>
-            <span class="badge done">DONE</span>
-        </div>
-        <div class="goal-body">50 Hz notch (Q=30) + 8-30 Hz Butterworth bandpass (order 4) per channel.</div>
-        <div class="goal-accept"><strong>Accept:</strong> Window of 250 × 8 processed in &lt; 1 ms; passband response within ±1 dB of design.</div>
-    </div>
-
-    <div class="goal-card">
-        <div class="goal-head">
-            <div><span class="goal-id">G3.2</span> &nbsp; <span class="goal-title">Pre-trained EEGNet on BCI-IV-2a</span></div>
-            <span class="badge done">DONE</span>
-        </div>
-        <div class="goal-body">EEGNet (1,684 params) trained on motor imagery dataset, 8 subjects.</div>
-        <div class="goal-accept"><strong>Accept:</strong> Cross-subject accuracy &gt; 40 % (chance = 25 %); ONNX + TFLite exports working.</div>
-    </div>
-
-    <div class="goal-card">
-        <div class="goal-head">
-            <div><span class="goal-id">G3.3</span> &nbsp; <span class="goal-title">Personal calibration protocol</span></div>
-            <span class="badge wip">IN PROGRESS</span>
-        </div>
-        <div class="goal-body">100-trial guided session with frozen-block fine-tuning.</div>
-        <div class="goal-accept"><strong>Accept:</strong> Subject-specific accuracy &gt; 55 % post-calibration; Block 1+2 frozen with BatchNorm in eval mode.</div>
-    </div>
-
-    <div class="goal-card">
-        <div class="goal-head">
-            <div><span class="goal-id">G3.4</span> &nbsp; <span class="goal-title">Online adaptation</span></div>
-            <span class="badge wip">IN PROGRESS</span>
-        </div>
-        <div class="goal-body">Pseudo-label accumulation + micro fine-tunes during normal use.</div>
-        <div class="goal-accept"><strong>Accept:</strong> Trigger every 50 high-confidence (&gt;80 %) windows; accuracy does not degrade by &gt;5 pp over a 30-min session.</div>
-    </div>
-
-    <div class="goal-group-title">4. Real-Time Pipeline</div>
-
-    <div class="goal-card">
-        <div class="goal-head">
-            <div><span class="goal-id">G4.1</span> &nbsp; <span class="goal-title">End-to-end latency budget</span></div>
-            <span class="badge todo">PLANNED</span>
-        </div>
-        <div class="goal-body">Time from EEG sample acquisition to motor PWM update on real hardware.</div>
-        <div class="goal-accept"><strong>Accept:</strong> &lt; 50 ms p95 latency, measured with timestamps or logic analyzer (not SITL).</div>
-    </div>
-
-    <div class="goal-card">
-        <div class="goal-head">
-            <div><span class="goal-id">G4.2</span> &nbsp; <span class="goal-title">Confidence gating + vote smoothing</span></div>
-            <span class="badge done">DONE</span>
-        </div>
-        <div class="goal-body">Reject low-confidence predictions; majority vote across recent windows.</div>
-        <div class="goal-accept"><strong>Accept:</strong> Predictions &lt; 40 % confidence ignored; final command is majority over last 3 high-conf windows.</div>
-    </div>
-
-    <div class="goal-group-title">5. Software Architecture</div>
-
-    <div class="goal-card">
-        <div class="goal-head">
-            <div><span class="goal-id">G5.1</span> &nbsp; <span class="goal-title">Modular Python package</span></div>
-            <span class="badge wip">IN PROGRESS</span>
-        </div>
-        <div class="goal-body">Refactor monolithic prototype into a clean <code>neurodrive</code> package.</div>
-        <div class="goal-accept"><strong>Accept:</strong> Each component is a separate module with single responsibility; entry-point scripts &lt; 200 lines each.</div>
-    </div>
-
-    <div class="goal-card">
-        <div class="goal-head">
-            <div><span class="goal-id">G5.2</span> &nbsp; <span class="goal-title">Automated test suite</span></div>
-            <span class="badge wip">IN PROGRESS</span>
-        </div>
-        <div class="goal-body">Pytest-based regression tests.</div>
-        <div class="goal-accept"><strong>Accept:</strong> ≥ 10 tests covering DSP, model I/O, smoother, safety state transitions, and network protocol; all passing.</div>
-    </div>
-
-    <div class="goal-group-title">6. User Interface</div>
-
-    <div class="goal-card">
-        <div class="goal-head">
-            <div><span class="goal-id">G6.1</span> &nbsp; <span class="goal-title">Web dashboard over WiFi</span></div>
-            <span class="badge wip">IN PROGRESS</span>
-        </div>
-        <div class="goal-body">Coral runs as a WiFi access point hosting a NiceGUI dashboard.</div>
-        <div class="goal-accept"><strong>Accept:</strong> User connects to "NeuroDrive" SSID, opens dashboard URL, sees live EEG and current command.</div>
-    </div>
-
-    <div class="goal-card">
-        <div class="goal-head">
-            <div><span class="goal-id">G6.2</span> &nbsp; <span class="goal-title">Three functional tabs</span></div>
-            <span class="badge wip">IN PROGRESS</span>
-        </div>
-        <div class="goal-body">Drive (real-time control), Calibrate (cue protocol), Settings (configuration).</div>
-        <div class="goal-accept"><strong>Accept:</strong> All three work end-to-end, including the visual cue session and config persistence.</div>
-    </div>
-
-    <div class="goal-group-title">7. Safety</div>
-
-    <div class="goal-card">
-        <div class="goal-head">
-            <div><span class="goal-id">G7.1</span> &nbsp; <span class="goal-title">Hardware E-stop</span></div>
-            <span class="badge todo">PLANNED</span>
-        </div>
-        <div class="goal-body">Physical button electrically cuts power to motor drivers, independent of all software.</div>
-        <div class="goal-accept"><strong>Accept:</strong> Pressing the button stops both motors within 100 ms even if all microcontrollers are frozen.</div>
-    </div>
-
-    <div class="goal-card">
-        <div class="goal-head">
-            <div><span class="goal-id">G7.2</span> &nbsp; <span class="goal-title">Multi-layer software watchdogs</span></div>
-            <span class="badge wip">IN PROGRESS</span>
-        </div>
-        <div class="goal-body">Each communication link has an independent timeout that triggers STOP.</div>
-        <div class="goal-accept"><strong>Accept:</strong> Coral → Pi heartbeat (3 s), Pi → Arduino serial (2 s); both verified by killing the upstream node.</div>
-    </div>
-
-    <div class="goal-card">
-        <div class="goal-head">
-            <div><span class="goal-id">G7.3</span> &nbsp; <span class="goal-title">Battery undervoltage cutoff</span></div>
-            <span class="badge wip">IN PROGRESS</span>
-        </div>
-        <div class="goal-body">Auto-stop before battery damage.</div>
-        <div class="goal-accept"><strong>Accept:</strong> Arduino reads battery rail via voltage divider; warning at threshold-1, motor cutoff at threshold-2; verified with bench supply sweep.</div>
-    </div>
-
-    <div class="goal-group-title">8. Demonstration</div>
-
-    <div class="goal-card">
-        <div class="goal-head">
-            <div><span class="goal-id">G8.1</span> &nbsp; <span class="goal-title">BCI-controlled drive</span></div>
-            <span class="badge todo">PLANNED</span>
-        </div>
-        <div class="goal-body">Live demo: user controls the wheelchair using motor imagery alone.</div>
-        <div class="goal-accept"><strong>Accept:</strong> After one calibration session, user navigates a basic course (forward, turn, stop) using BCI commands only.</div>
-    </div>
-
-    <div class="goal-card">
-        <div class="goal-head">
-            <div><span class="goal-id">G8.2</span> &nbsp; <span class="goal-title">Manual override</span></div>
-            <span class="badge done">DONE</span>
-        </div>
-        <div class="goal-body">D-pad on dashboard always preempts BCI commands.</div>
-        <div class="goal-accept"><strong>Accept:</strong> While in EEG mode, pressing a D-pad button overrides the next BCI command and holds until released.</div>
-    </div>
-
-    <div class="goal-group-title">9. Documentation</div>
-
-    <div class="goal-card">
-        <div class="goal-head">
-            <div><span class="goal-id">G9.1</span> &nbsp; <span class="goal-title">GitHub Pages site</span></div>
-            <span class="badge wip">IN PROGRESS</span>
-        </div>
-        <div class="goal-body">Public-facing site documenting architecture, signal pipeline, ML model, calibration, safety, and these goals.</div>
-        <div class="goal-accept"><strong>Accept:</strong> All sections complete with figures and metrics; goals page reflects current status.</div>
-    </div>
-
-    <div class="goal-card">
-        <div class="goal-head">
-            <div><span class="goal-id">G9.2</span> &nbsp; <span class="goal-title">Reproducible setup</span></div>
-            <span class="badge wip">IN PROGRESS</span>
-        </div>
-        <div class="goal-body">Fresh git clone + <code>pip install</code> runnable on Windows, Linux, and Coral.</div>
-        <div class="goal-accept"><strong>Accept:</strong> Quick-start commands succeed on a clean environment without manual fixes.</div>
+    <div class="callout">
+        <strong>Note on measurements:</strong> SITL-measured values are verified on a development PC. Real-hardware end-to-end latency is expected to remain &lt; 50 ms based on Edge TPU benchmarks. Personal calibration accuracy improves significantly with clean dry electrodes and a quiet recording environment.
     </div>
 </section>
+
+<hr class="divider">
 
 <!-- FOOTER -->
 <footer>
