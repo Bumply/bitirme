@@ -164,7 +164,7 @@ class ADS1299Reader:
             raise RuntimeError("ADS1299Reader requires Coral hardware (spidev)")
 
         import spidev
-        from python_periphery import GPIO
+        from periphery import GPIO
 
         self.spi = spidev.SpiDev()
         self.spi.open(bus, device)
@@ -626,7 +626,7 @@ class LEDController:
     def __init__(self):
         self.enabled = RUNNING_ON_CORAL
         if self.enabled:
-            from python_periphery import GPIO
+            from periphery import GPIO
             self.capture_led   = GPIO("/dev/gpiochip2", LED_CAPTURE, "out")
             self.inference_led = GPIO("/dev/gpiochip2", LED_INFERENCE, "out")
 
