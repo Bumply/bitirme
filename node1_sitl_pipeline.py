@@ -125,7 +125,7 @@ class TeeLogger:
 FS              = 250          # Target sample rate (Hz) — matches ADS1299 config
 BUFFER_SECONDS  = 1            # Rolling buffer duration (seconds)
 BUFFER_SIZE     = FS * BUFFER_SECONDS   # 250 samples = 1 second window
-CHANNELS        = ["FC3", "FC4", "C3", "Cz", "C4", "CP3", "CP4", "FCz"]  # 8ch ADS1299
+CHANNELS        = ["C3", "Cz", "C4", "CPz"]  # 4ch ADS1299-4
 N_CH            = len(CHANNELS)
 DSP_INTERVAL_S  = 0.5          # DSP thread fires every 500ms (overlapping windows)
 SAMPLE_INTERVAL = 1.0 / FS     # 0.004 s = 4 ms per sample

@@ -12,7 +12,7 @@ Replaces SITL components with real hardware:
 
 Prerequisites (on Coral / Mendel Linux):
     1. NeuroDrive PCB connected via SPI
-    2. EEG cap with 8 electrodes: FC3, FC4, C3, Cz, C4, CP3, CP4, FCz
+    2. EEG cap with 4 electrodes (ADS1299-4): C3, Cz, C4, CPz
     3. Model compiled for Edge TPU:
        $ edgetpu_compiler models/EEGNet_*_int8.tflite
     4. WiFi AP configured (Coral hosts AP, Pi 5 connects as client)
@@ -41,8 +41,10 @@ from scipy.signal import iirnotch, butter, sosfilt, sosfilt_zi, tf2sos
 
 FS             = 250
 BUFFER_SIZE    = FS          # 1 second rolling window
-N_CH           = 8
-CHANNELS       = ["FC3", "FC4", "C3", "Cz", "C4", "CP3", "CP4", "FCz"]
+# 4-channel ADS1299-4 hat. Montage is the standard motor-imagery set;
+# adjust to match the board's actual electrode wiring if different.
+CHANNELS       = ["C3", "Cz", "C4", "CPz"]
+N_CH           = len(CHANNELS)   # 4 — matches ADS1299-4 hardware
 DSP_INTERVAL_S = 0.5         # inference every 500ms
 SAMPLE_INTERVAL = 1.0 / FS   # 4ms between samples
 
@@ -292,8 +294,8 @@ class ADS1299Reader:
         self.drdy.poll(timeout=None)
         self.drdy.read_event()
 
-        # Read: 3 status bytes + 8 channels * 3 bytes each = 27 bytes
-        raw = self.spi.xfer2([0x00] * 27)
+        # Read: 3 status bytes + N_CH channels * 3 bytes each
+        raw = self.spi.xfer2([0x00] * (3 + N_CH * 3))
 
         # Parse lead-off status from status bytes
         # Byte 0: [1100 LOFF_STATP[7:4]]

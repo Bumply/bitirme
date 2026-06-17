@@ -107,8 +107,8 @@ MODELS_DIR.mkdir(exist_ok=True)
 ALL_SUBJECTS   = list(range(1, 10))          # 9 subjects in BCI-IV-2a
 TEST_SUBJECT   = 9                           # held out — never seen in training
 TRAIN_SUBJECTS = [s for s in ALL_SUBJECTS if s != TEST_SUBJECT]
-CHANNELS       = ["FC3", "FC4", "C3", "Cz", "C4", "CP3", "CP4", "FCz"]
-N_CH           = len(CHANNELS)   # 8 — matches ADS1299 hardware
+CHANNELS       = ["C3", "Cz", "C4", "CPz"]   # 4-ch ADS1299-4 hat (adjust to board wiring)
+N_CH           = len(CHANNELS)   # 4 — matches ADS1299-4 hardware
 FS             = 250                         # Hz — matches ADS1299 config
 TMIN           = 0.5   # skip first 0.5s of each trial (visual evoked potential
                        # from cue arrow appears here — we don't want to learn it)
