@@ -168,8 +168,8 @@ def load_bci_data():
 
     Returns
     -------
-    raw_array   : np.ndarray, shape (n_samples, 3), dtype float64
-                  Columns correspond to [C3, Cz, C4] in that order.
+    raw_array   : np.ndarray, shape (n_samples, 8), dtype float64
+                  Columns correspond to the 8 channels in CHANNELS, in order.
                   Units: volts (as returned by MNE from the GDF file).
     events_list : list of (int, str) tuples — (sample_idx, label_char)
                   Each tuple marks the ONSET of a 4-second imagery trial.
@@ -198,7 +198,7 @@ def load_bci_data():
         raise RuntimeError(
             f"Channels {missing} not found. Available: {raw.ch_names}"
         )
-    raw.pick_channels(CHANNELS)   # drop everything except C3, Cz, C4
+    raw.pick_channels(CHANNELS)   # keep only the 8 motor-cortex channels
 
     # Resample only if the dataset SR differs from our target (it shouldn't for IV-2a)
     actual_fs = raw.info["sfreq"]
@@ -207,7 +207,7 @@ def load_bci_data():
         raw.resample(FS)
 
     # Extract the raw numpy array: MNE gives (n_channels, n_samples) -> transpose
-    raw_array = raw.get_data().T       # shape: (n_samples, 3)
+    raw_array = raw.get_data().T       # shape: (n_samples, 8)
 
     # ---- Build events list from MNE annotations ----
     try:

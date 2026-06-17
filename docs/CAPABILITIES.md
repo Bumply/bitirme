@@ -94,8 +94,8 @@ A 3-node Brain-Computer Interface that reads motor imagery EEG, classifies it wi
 | Pi 5 → Arduino | USB Serial @ 115200 baud |
 | Packet format | JSON `{"cmd": "F", "conf": 0.87, "ts": ...}` |
 | WiFi mode | Coral hosts AP (SSID "NeuroDrive", IP 192.168.4.1) |
-| Dashboard URL | `http://192.168.4.1:8081` |
-| Dashboard port (legacy Jupyter) | 8080 |
+| Dashboard URL | `http://<pi5-ip>:8080` (NiceGUI runs on Node 2 / Pi 5, not the Coral) |
+| Dashboard port | 8080 |
 
 ## Safety
 

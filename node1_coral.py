@@ -48,6 +48,10 @@ SAMPLE_INTERVAL = 1.0 / FS   # 4ms between samples
 
 # EEGNet class mapping (must match training)
 CLASS_NAMES = ["F", "L", "R", "S"]
+# LOCK: training's LabelEncoder assigns class indices in ALPHABETICAL order, so
+# this exact order defines what each model output index means. Reordering it
+# silently scrambles every wheelchair command. Keep it sorted (F, L, R, S).
+assert CLASS_NAMES == sorted(CLASS_NAMES), "CLASS_NAMES must stay alphabetical (F,L,R,S)"
 
 # Confidence + smoothing (same as SITL inference)
 CONFIDENCE_THRESHOLD = 0.40
@@ -179,13 +183,29 @@ class ADS1299Reader:
         self.loff_statp = 0    # positive electrode lead-off (8 bits, 1=off)
         self.loff_statn = 0    # negative electrode lead-off (8 bits, 1=off)
 
+        # --- Verify the ADS1299 BEFORE entering continuous-read mode ---
+        # Register reads only work in command mode (SDATAC). Reading the ID
+        # register while in RDATAC returns streamed data bytes instead, which
+        # is what produced the bogus "0x00 -> 4 channels" misread.
+        self.spi.xfer2([ADS_SDATAC])
+        time.sleep(0.01)
+        id_reg  = self._read_reg(0x00)
+        nu_ch   = id_reg & 0x03                       # ID[1:0] = NU_CH
+        n_ch_hw = {0: 4, 1: 6, 2: 8}.get(nu_ch)
+        # ID[4] is hard-wired to 1 on a real ADS1299; 0x00/0xFF mean no/bad SPI.
+        if (id_reg & 0x10) == 0 or id_reg in (0x00, 0xFF) or n_ch_hw is None:
+            print(f"[ADS1299] WARNING: invalid ID register 0x{id_reg:02X} -- "
+                  f"check hat seating / SPI wiring (expected 8-channel ADS1299)")
+            n_ch_hw = N_CH
+        elif n_ch_hw != N_CH:
+            print(f"[ADS1299] WARNING: chip reports {n_ch_hw} channels but "
+                  f"code expects N_CH={N_CH}")
+
+        # Configure registers (this re-enters continuous-read mode at the end)
         self._configure_registers(channel_modes)
 
-        # Detect ADS version (4/6/8 channels)
-        id_reg = self._read_reg(0x00)
-        n_ch_hw = [4, 6, 8][id_reg & 0x03] if (id_reg & 0x03) <= 2 else 8
         print(f"[ADS1299] SPI bus={bus} dev={device} speed={speed//1000}kHz "
-              f"channels={n_ch_hw} VREF={ADS_VREF}V")
+              f"channels={n_ch_hw} VREF={ADS_VREF}V (ID=0x{id_reg:02X})")
 
     def _write_reg(self, reg, value):
         """Write a single ADS1299 register."""
@@ -1237,10 +1257,18 @@ def main():
 
     print(f"\n[INIT] Model: {model_path.name} (type={model_type})")
 
-    if model_type in ("edgetpu", "tflite"):
-        engine = TFLiteInferenceEngine(model_path)
-    else:
-        engine = PyTorchInferenceEngine(model_path)
+    try:
+        if model_type in ("edgetpu", "tflite"):
+            engine = TFLiteInferenceEngine(model_path)
+        else:
+            engine = PyTorchInferenceEngine(model_path)
+    except ImportError as e:
+        print(f"[ERROR] Could not load {model_type} inference engine: {e}")
+        if model_type == "pytorch":
+            print("[ERROR] PyTorch is not installed on this device (expected on the "
+                  "Coral). Provide a .tflite/_edgetpu model built via "
+                  "node1_training.export_models instead.")
+        return
 
     # ── Build components ──────────────────────────────────────────────
     filter_chain = FilterChain()

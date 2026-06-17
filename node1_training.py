@@ -119,6 +119,9 @@ WINDOW_STRIDE  = int(0.5 * FS)              # 50% overlap = 125 samples
 
 # Label mapping — identical to SITL pipeline
 CLASS_NAMES = ["F", "L", "R", "S"]          # sorted alphabetically for LabelEncoder
+# LOCK: must stay alphabetical — LabelEncoder maps indices in sorted order, and
+# node1_coral.py relies on this exact order to decode model outputs into commands.
+assert CLASS_NAMES == sorted(CLASS_NAMES), "CLASS_NAMES must stay alphabetical (F,L,R,S)"
 EVENT_MAP   = {
     "left_hand":  "L",
     "right_hand": "R",
@@ -260,7 +263,7 @@ class EEGNet(nn.Module):
     Designed specifically for EEG: compact, generalizes across subjects.
     All ops are standard conv/BN/pool — fully exportable to ONNX and TFLite.
 
-    Input shape:  (batch, 1, n_ch, n_tp)  =  (batch, 1, 3, 250)
+    Input shape:  (batch, 1, n_ch, n_tp)  =  (batch, 1, 8, 250)
 
     Block 1 — Temporal Conv (1 × kern_temp):
         Learns frequency-selective filters across time.
@@ -551,7 +554,7 @@ def export_models(model, X_representative, run_name, device):
 
     Parameters
     ----------
-    X_representative : np.ndarray, shape (n_cal, 1, 3, 250)
+    X_representative : np.ndarray, shape (n_cal, 1, 8, 250)
         ~200 samples for int8 calibration.
     """
     pt_path   = MODELS_DIR / f"EEGNet_{run_name}.pt"
@@ -724,7 +727,7 @@ def main():
     y_te_int, _  = encode_labels(y_te_seg, le)
 
     # ── Step 5: Prepare tensors ───────────────────────────────────────────
-    X_tr_4d = prepare_input(X_tr_seg)   # (n, 1, 3, 250)
+    X_tr_4d = prepare_input(X_tr_seg)   # (n, 1, 8, 250)
     X_te_4d = prepare_input(X_te_seg)
 
     # 10% of training set as validation (stratified)
