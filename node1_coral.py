@@ -93,6 +93,7 @@ ADS_WREG    = 0x40
 ADS_RDATAC  = 0x10
 ADS_SDATAC  = 0x11
 ADS_RDATA   = 0x12
+ADS_START   = 0x08      # begin conversions (DRDY won't toggle without this)
 
 # LED GPIO pins (Coral Dev Board Mini)
 LED_CAPTURE   = 28   # purple LED — on during capture
@@ -161,7 +162,7 @@ class ADS1299Reader:
     }
 
     def __init__(self, bus=SPI_BUS, device=SPI_DEVICE, speed=SPI_SPEED,
-                 channel_modes=None):
+                 channel_modes=None, test_signal=False):
         if not RUNNING_ON_CORAL:
             raise RuntimeError("ADS1299Reader requires Coral hardware (spidev)")
 
@@ -175,10 +176,18 @@ class ADS1299Reader:
 
         # DRDY pin — active low, signals new data ready
         # Uses edge polling like NeuroDrive (not busy-wait)
-        self.drdy = GPIO("/dev/gpiochip0", 27, "in", edge="falling")
+        # DRDY = gpiochip0 line 45 on the Coral (matches Portiloop's proven
+        # backend.py for hardware_version 2 — line 27 here was a transcription
+        # bug that left read_sample() blocking on edges that never came).
+        self.drdy = GPIO("/dev/gpiochip0", 45, "in", edge="falling")
 
-        # Default: all 8 channels active in simple mode
-        if channel_modes is None:
+        # Default: all channels active in simple mode. test_signal routes the
+        # ADS1299's internal square-wave generator to every channel — a bench
+        # self-test that needs no electrodes.
+        self._test_signal = test_signal
+        if test_signal:
+            channel_modes = ["test"] * N_CH
+        elif channel_modes is None:
             channel_modes = ["simple"] * N_CH
 
         # Lead-off status (updated every read)
@@ -233,8 +242,9 @@ class ADS1299Reader:
         config1 = 0x90 | self.DATARATES.get(FS, 0x06)
         self._write_reg(0x01, config1)
 
-        # CONFIG2 (reg 0x02): no test signal, no calibration
-        self._write_reg(0x02, 0xC0)
+        # CONFIG2 (reg 0x02): 0xD0 enables the internal test-signal generator
+        # (INT_CAL=1) for the bench self-test; 0xC0 = off for normal acquisition.
+        self._write_reg(0x02, 0xD0 if self._test_signal else 0xC0)
 
         # CONFIG3 (reg 0x03): internal reference, bias enabled
         # PD_REFBUF=1, BIAS_MEAS=0, BIASREF_INT=1, PD_BIAS=1
@@ -272,7 +282,10 @@ class ADS1299Reader:
         # MISC1 (reg 0x15): enable SRB1 (reference buffer)
         self._write_reg(0x15, 0x20)
 
-        # Start continuous read mode
+        # Begin conversions (START), then enter continuous-read mode.
+        # Without START the ADC never converts and DRDY never toggles.
+        self.spi.xfer2([ADS_START])
+        time.sleep(0.01)
         self.spi.xfer2([ADS_RDATAC])
         time.sleep(0.01)
 
