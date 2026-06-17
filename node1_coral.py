@@ -626,9 +626,15 @@ class LEDController:
     def __init__(self):
         self.enabled = RUNNING_ON_CORAL
         if self.enabled:
-            from periphery import GPIO
-            self.capture_led   = GPIO("/dev/gpiochip2", LED_CAPTURE, "out")
-            self.inference_led = GPIO("/dev/gpiochip2", LED_INFERENCE, "out")
+            try:
+                from periphery import GPIO
+                self.capture_led   = GPIO("/dev/gpiochip2", LED_CAPTURE, "out")
+                self.inference_led = GPIO("/dev/gpiochip2", LED_INFERENCE, "out")
+            except Exception as e:
+                # Status LEDs are cosmetic — never let a missing/!wired GPIO
+                # chip (e.g. this board only exposes gpiochip0) crash Node 1.
+                print(f"[LED] Disabled (no usable GPIO for LEDs: {e})")
+                self.enabled = False
 
     def capture_on(self):
         if self.enabled:
@@ -872,6 +878,11 @@ class OnlineAdapter:
 
     def get_stats(self):
         """Return adaptation stats for logging."""
+        if not self.enabled:
+            # Disabled adapter never initializes its buffers — return defaults
+            # so the inference thread's logging doesn't crash.
+            return {"enabled": False, "buffer_size": 0,
+                    "adapt_count": 0, "total_adapted": 0}
         return {
             "enabled": self.enabled,
             "buffer_size": len(self.windows),
