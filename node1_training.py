@@ -395,7 +395,7 @@ def train(model, X_tr, y_tr, X_val, y_val, run_name, device):
     optimizer = torch.optim.Adam(model.parameters(), lr=LR)
     criterion = nn.CrossEntropyLoss()
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode="min", factor=0.5, patience=10, min_lr=1e-5, verbose=True
+        optimizer, mode="min", factor=0.5, patience=10, min_lr=1e-5
     )
     scaler = torch.amp.GradScaler(enabled=(device.type == "cuda"))
 
