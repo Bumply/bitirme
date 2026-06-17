@@ -28,3 +28,6 @@ generate_figures.py
 .venv/
 venv/
 env/
+
+# uv conversion/training venvs
+.venv-*/
