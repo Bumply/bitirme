@@ -1,438 +1,382 @@
 /*
 ================================================================================
-NEURODRIVE — NODE 3 | ARDUINO MEGA 2560 MOTOR CONTROL
+NEURODRIVE -- NODE 3 | MOTOR CONTROLLER (Arduino Mega 2560)
 ================================================================================
-Receives single-byte commands from Node 2 (Pi 5) via Serial, runs a state
-machine with smooth acceleration/deceleration, and drives two wheelchair motors
-via H-bridge (L298N or BTS7960).
+Receives single-byte drive commands from Node 2 (Raspberry Pi) over USB serial
+@ 115200 and drives the wheelchair. Built directly on the user's proven
+`full_test (1).ino` -- the hub / steering / brake primitives below are VERBATIM
+from that working sketch (do not "improve" them). This file only adds the
+NeuroDrive F/L/R/S/E protocol, an E-STOP latch, and hold-to-drive safety.
 
-Serial Protocol (115200 baud):
-    Receive: 'F' = forward, 'L' = left, 'R' = right, 'S' = stop, 'E' = e-stop
-    Send:    "STATE:<state> SPD:<speed> BAT:<voltage>\n"  (ack after each cmd)
+PROTOCOL (one ASCII byte from Node 2):
+    F = FORWARD  -> release brake, hub full throttle (HOLD-TO-DRIVE)
+    L = LEFT     -> steer one notch left   (position-limited)
+    R = RIGHT    -> steer one notch right
+    S = STOP     -> hub off, steer off, COAST (no brake); clears an E-STOP
+    E = E-STOP   -> hub off, steer off, ENGAGE brake + latch until an S
 
-Pin Mapping (Arduino Mega 2560 + L298N dual H-bridge):
-    Left motor:   ENA=2 (PWM), IN1=22, IN2=23
-    Right motor:  ENB=3 (PWM), IN3=24, IN4=25
-    E-stop input: pin 18 (hardware interrupt, active LOW, pulled HIGH)
-    E-stop LED:   pin 13 (built-in LED, ON when e-stopped)
-    Battery ADC:  A0 (voltage divider: Vbat * R2/(R1+R2), max 5V)
+SAFETY:
+  * HOLD-TO-DRIVE: F only keeps rolling while F bytes keep arriving; if none
+    arrive for DRIVE_TIMEOUT_MS the hub is cut. EEG streams ~4/s; the phone
+    FORWARD button auto-repeats while held and sends S on release.
+  * STOP just coasts (throttle off). The brake is used ONLY by E-STOP; clearing
+    an E-STOP (an S after an E) releases it again.
+  * Brake is a TIMED PULSE (not a continuous hold) so it can't over-travel.
+  * Everything off at boot, brake released.
 
-Safety:
-    - Hardware e-stop button bypasses all software (wired to motor driver enable)
-    - Software watchdog: auto-stop if no serial command for 2 seconds
-    - Battery voltage monitor: warning at 11V, auto-stop at 10.5V (for 12V battery)
-    - Smooth acceleration ramp prevents sudden jerks
-    - State machine rejects invalid transitions
+The lowercase bench keys from full_test (a/d/w/x/q/e/f/g/b/0/1/2/3/+/-/i/v/?)
+still work from a serial monitor. Node 2 only ever sends uppercase F/L/R/S/E.
 
+WIRING (Mega 2560): MCP4725 @0x60 SDA20/SCL21; STEER BTS7960 R_EN11 L_EN12
+RPWM9 LPWM10; BRAKE BTS7960 R_EN7 L_EN8 RPWM5 LPWM6.
 ================================================================================
 */
 
-// =============================================================================
-// PIN DEFINITIONS
-// =============================================================================
-
-// Left motor (L298N channel A)
-#define LEFT_EN    2    // PWM speed control (ENA)
-#define LEFT_FWD   22   // IN1 — HIGH = forward
-#define LEFT_REV   23   // IN2 — HIGH = reverse
-
-// Right motor (L298N channel B)
-#define RIGHT_EN   3    // PWM speed control (ENB)
-#define RIGHT_FWD  24   // IN3 — HIGH = forward
-#define RIGHT_REV  25   // IN4 — HIGH = reverse
-
-// E-stop hardware button (normally open, pulled HIGH, press = LOW)
-#define ESTOP_PIN  18   // External interrupt (INT3 on Mega)
-#define ESTOP_LED  13   // Built-in LED — ON when e-stopped
-
-// Battery voltage monitoring
-#define BAT_PIN    A0   // Voltage divider output
-// Voltage divider: 47k (R1) + 10k (R2) -> ratio = 10/(47+10) = 0.1754
-// At 12V battery: ADC reads 12 * 0.1754 = 2.105V -> (2.105/5.0)*1023 = 431
-#define BAT_DIVIDER_RATIO  5.7   // (R1+R2)/R2 = 57k/10k = 5.7
-#define BAT_WARN_V         11.0  // Warning voltage
-#define BAT_CUTOFF_V       10.5  // Auto-stop voltage
-
+#include <Wire.h>
+#include <Adafruit_MCP4725.h>
 
 // =============================================================================
-// CONFIGURATION
+// HUB MOTOR (MCP4725 DAC -> hub controller throttle)   [verbatim from full_test]
 // =============================================================================
+Adafruit_MCP4725 dac;
 
-#define SERIAL_BAUD       115200
-#define WATCHDOG_TIMEOUT  2000   // ms — auto-stop if no command received
-#define RAMP_INTERVAL     20     // ms — time between PWM steps during ramp
-#define RAMP_STEP          5     // PWM units per ramp interval (0-255)
-#define MAX_SPEED        200     // Max PWM value (0-255), adjustable from Node 2
-#define TURN_SPEED_INNER  50     // Inner wheel speed during turn (slight rotation)
-#define TURN_SPEED_OUTER 150     // Outer wheel speed during turn
-#define BAT_CHECK_INTERVAL 5000  // ms — check battery every 5s
-#define ACK_INTERVAL       200   // ms — send state ack to Pi
+const uint16_t THROTTLE_OFF = 933;    // ~0.5 V (below controller's min)
+const uint16_t DAC_MIN      = 1900;   // ~2.0 V (controller starts here)
+const uint16_t DAC_MAX      = 2100;   // ~3.5 V (controller maxes here)
+const int      HUB_STEPS    = 1;
 
+int  currentStep = 0;
+bool dac_found   = false;
 
-// =============================================================================
-// STATE MACHINE
-// =============================================================================
-
-enum State {
-    STATE_IDLE,           // Motors off, waiting for command
-    STATE_FORWARD,        // Both motors forward, ramping to target speed
-    STATE_TURNING_LEFT,   // Right motor forward, left motor slow
-    STATE_TURNING_RIGHT,  // Left motor forward, right motor slow
-    STATE_STOPPING,       // Ramping down to stop
-    STATE_ESTOP           // Emergency stop — motors killed, requires reset
-};
-
-const char* STATE_NAMES[] = {
-    "IDLE", "FORWARD", "TURN_L", "TURN_R", "STOPPING", "ESTOP"
-};
-
-
-// =============================================================================
-// GLOBAL STATE
-// =============================================================================
-
-volatile State currentState = STATE_IDLE;
-volatile bool eStopTriggered = false;
-
-// Current PWM values (what the motors are actually doing)
-int leftPWM  = 0;
-int rightPWM = 0;
-
-// Target PWM values (what we're ramping toward)
-int leftTarget  = 0;
-int rightTarget = 0;
-
-// Speed limit from Node 2 (0-255)
-int maxSpeed = MAX_SPEED;
-
-// Timing
-unsigned long lastCommandTime = 0;
-unsigned long lastRampTime    = 0;
-unsigned long lastBatCheck    = 0;
-unsigned long lastAckTime     = 0;
-
-// Battery
-float batteryVoltage = 12.0;
-bool  batteryLow     = false;
-
-
-// =============================================================================
-// E-STOP INTERRUPT (hardware button)
-// =============================================================================
-
-void eStopISR() {
-    // Immediately kill motors — this runs in interrupt context
-    analogWrite(LEFT_EN, 0);
-    analogWrite(RIGHT_EN, 0);
-    digitalWrite(LEFT_FWD, LOW);
-    digitalWrite(LEFT_REV, LOW);
-    digitalWrite(RIGHT_FWD, LOW);
-    digitalWrite(RIGHT_REV, LOW);
-
-    eStopTriggered = true;
-    currentState = STATE_ESTOP;
+uint16_t getStepValue(int step) {
+    if (step <= 0) return DAC_MIN;
+    if (step >= HUB_STEPS) return DAC_MAX;
+    return DAC_MIN + (uint16_t)((DAC_MAX - DAC_MIN) * (step / (float)HUB_STEPS));
 }
 
-
-// =============================================================================
-// MOTOR CONTROL
-// =============================================================================
-
-void setMotorLeft(int speed, bool forward) {
-    // speed: 0-255 PWM value
-    if (speed == 0) {
-        // Brake: both pins LOW
-        digitalWrite(LEFT_FWD, LOW);
-        digitalWrite(LEFT_REV, LOW);
-        analogWrite(LEFT_EN, 0);
-    } else if (forward) {
-        digitalWrite(LEFT_FWD, HIGH);
-        digitalWrite(LEFT_REV, LOW);
-        analogWrite(LEFT_EN, speed);
+void hubSetStep(int step) {
+    if (!dac_found) { Serial.println("[HUB] DAC not found, send 'i' to scan"); return; }
+    if (step < 0)         step = 0;
+    if (step > HUB_STEPS) step = HUB_STEPS;
+    currentStep = step;
+    if (step == 0) {
+        dac.setVoltage(THROTTLE_OFF, false);
+        Serial.println("[HUB] OFF");
     } else {
-        digitalWrite(LEFT_FWD, LOW);
-        digitalWrite(LEFT_REV, HIGH);
-        analogWrite(LEFT_EN, speed);
+        uint16_t v = getStepValue(step);
+        dac.setVoltage(v, false);
+        Serial.print("[HUB] step="); Serial.print(step);
+        Serial.print("/"); Serial.print(HUB_STEPS);
+        Serial.print("  dac="); Serial.println(v);
     }
 }
 
-void setMotorRight(int speed, bool forward) {
-    if (speed == 0) {
-        digitalWrite(RIGHT_FWD, LOW);
-        digitalWrite(RIGHT_REV, LOW);
-        analogWrite(RIGHT_EN, 0);
-    } else if (forward) {
-        digitalWrite(RIGHT_FWD, HIGH);
-        digitalWrite(RIGHT_REV, LOW);
-        analogWrite(RIGHT_EN, speed);
-    } else {
-        digitalWrite(RIGHT_FWD, LOW);
-        digitalWrite(RIGHT_REV, HIGH);
-        analogWrite(RIGHT_EN, speed);
+// =============================================================================
+// STEERING MOTOR (BTS7960 #1)                          [verbatim from full_test]
+// =============================================================================
+#define STEER_R_EN  11
+#define STEER_L_EN  12
+#define STEER_RPWM  9
+#define STEER_LPWM  10
+
+const uint8_t SPEED_LOW  = 150;
+const uint8_t SPEED_MID  = 200;
+const uint8_t SPEED_FULL = 255;
+
+uint8_t  steerSpeed   = SPEED_LOW;
+uint16_t steerPulseMs = 900;
+const uint16_t MIN_PULSE = 100;
+const uint16_t MAX_PULSE = 2000;
+
+unsigned long steerEndMs  = 0;
+bool          steerActive = false;
+int           steeringPosition = 0;    // -1 left, 0 center, 1 right
+
+void stopSteering() {
+    analogWrite(STEER_RPWM, 0);
+    analogWrite(STEER_LPWM, 0);
+    steerActive = false;
+}
+
+void steerLeft() {
+    analogWrite(STEER_LPWM, 0);
+    analogWrite(STEER_LPWM, steerSpeed);
+    steerActive = true;
+    steerEndMs  = millis() + steerPulseMs;
+    Serial.print("[STEER] LEFT  speed="); Serial.print(steerSpeed);
+    Serial.print("  dur="); Serial.print(steerPulseMs); Serial.println(" ms");
+}
+
+void steerRight() {
+    analogWrite(STEER_RPWM, 0);
+    analogWrite(STEER_RPWM, steerSpeed);
+    steerActive = true;
+    steerEndMs  = millis() + steerPulseMs;
+    Serial.print("[STEER] RIGHT speed="); Serial.print(steerSpeed);
+    Serial.print("  dur="); Serial.print(steerPulseMs); Serial.println(" ms");
+}
+
+// =============================================================================
+// BRAKE MOTOR (BTS7960 #2)                             [verbatim from full_test]
+// =============================================================================
+#define BRAKE_R_EN  7
+#define BRAKE_L_EN  8
+#define BRAKE_RPWM  5
+#define BRAKE_LPWM  6
+
+const uint8_t brakeSpeed   = 255;
+uint16_t brakeEngageMs     = 3000;   // engage (tighten) pulse duration
+uint16_t brakeReleaseMs    = 2000;   // release (loosen) pulse duration
+
+unsigned long brakeEndMs  = 0;
+bool          brakeActive = false;
+bool          brakeHold   = false;
+int           brakePosition = 1;       // 0 = engaged, 1 = released
+
+void stopBrake() {
+    analogWrite(BRAKE_RPWM, 0);
+    analogWrite(BRAKE_LPWM, 0);
+    brakeActive = false;
+    brakeHold   = false;
+}
+
+void brakeEngage(bool hold) {
+    analogWrite(BRAKE_RPWM, 0);
+    analogWrite(BRAKE_RPWM, brakeSpeed);
+    brakeActive = true;
+    brakeHold   = hold;
+    brakeEndMs  = millis() + brakeEngageMs;
+    Serial.print("[BRAKE] ENGAGE speed="); Serial.print(brakeSpeed);
+    Serial.print(hold ? "  HOLD" : "  pulse=");
+    if (!hold) { Serial.print(brakeEngageMs); Serial.println(" ms"); } else Serial.println();
+}
+
+void brakeRelease(bool hold) {
+    analogWrite(BRAKE_LPWM, 0);
+    analogWrite(BRAKE_LPWM, brakeSpeed);
+    brakeActive = true;
+    brakeHold   = hold;
+    brakeEndMs  = millis() + brakeReleaseMs;
+    Serial.print("[BRAKE] RELEASE speed="); Serial.print(brakeSpeed);
+    Serial.print(hold ? "  HOLD" : "  pulse=");
+    if (!hold) { Serial.print(brakeReleaseMs); Serial.println(" ms"); } else Serial.println();
+}
+
+// =============================================================================
+// PROTOCOL STATE + SAFETY
+// =============================================================================
+bool          eStop       = false;
+bool          driveActive = false;        // hub currently commanded forward
+unsigned long lastDriveMs = 0;            // last F (or L/R while driving)
+unsigned long lastCmdMs   = 0;            // last byte of any kind
+
+const unsigned long DRIVE_TIMEOUT_MS = 800;   // hold-to-drive: cut hub
+const unsigned long WATCHDOG_MS      = 2000;  // total silence backstop
+
+// Soft stop: hub off + steering off, COAST. Does NOT touch the brake -- the
+// brake is reserved for E-STOP only.
+void stopAll(const char* reason) {
+    hubSetStep(0);
+    stopSteering();
+    driveActive = false;
+    Serial.print("[ALL STOP] "); Serial.println(reason);
+}
+
+// =============================================================================
+// PROTOCOL HANDLERS (F/L/R/S/E from Node 2)
+// =============================================================================
+void cmdForward() {
+    if (eStop) { Serial.println("[F] ignored (E-STOP)"); return; }
+    if (brakePosition == 0) { brakeRelease(false); brakePosition = 1; }  // release brake
+    hubSetStep(HUB_STEPS);                 // full throttle (DAC_MAX)
+    driveActive = true;
+    lastDriveMs = millis();
+}
+
+void cmdLeft() {
+    if (eStop) return;
+    if (steeringPosition > -1) { steerLeft(); steeringPosition--; }
+    else Serial.println("[STEER] Already at LEFT limit.");
+    if (driveActive) lastDriveMs = millis();   // keep rolling through the turn
+}
+
+void cmdRight() {
+    if (eStop) return;
+    if (steeringPosition < 1) { steerRight(); steeringPosition++; }
+    else Serial.println("[STEER] Already at RIGHT limit.");
+    if (driveActive) lastDriveMs = millis();
+}
+
+void cmdStop() {
+    stopAll("stop");
+    if (eStop) {
+        // recovering from E-STOP: release the brake it engaged
+        if (brakePosition == 0) { brakeRelease(false); brakePosition = 1; }
+        eStop = false;
+        Serial.println("[E-STOP] cleared");
     }
 }
 
-void killMotors() {
-    leftPWM = 0;
-    rightPWM = 0;
-    leftTarget = 0;
-    rightTarget = 0;
-    setMotorLeft(0, true);
-    setMotorRight(0, true);
+void cmdEStop() {
+    stopAll("E-STOP");
+    if (brakePosition == 1) { brakeEngage(false); brakePosition = 0; }  // brake only here
+    eStop = true;
+    Serial.println("[E-STOP] latched -- send S to clear");
 }
 
-
 // =============================================================================
-// RAMP ENGINE — smooth acceleration / deceleration
+// DIAGNOSTICS                                          [from full_test]
 // =============================================================================
-
-void updateRamp() {
-    unsigned long now = millis();
-    if (now - lastRampTime < RAMP_INTERVAL) return;
-    lastRampTime = now;
-
-    // Ramp left motor toward target
-    if (leftPWM < leftTarget) {
-        leftPWM = min(leftPWM + RAMP_STEP, leftTarget);
-    } else if (leftPWM > leftTarget) {
-        leftPWM = max(leftPWM - RAMP_STEP, leftTarget);
-    }
-
-    // Ramp right motor toward target
-    if (rightPWM < rightTarget) {
-        rightPWM = min(rightPWM + RAMP_STEP, rightTarget);
-    } else if (rightPWM > rightTarget) {
-        rightPWM = max(rightPWM - RAMP_STEP, rightTarget);
-    }
-
-    // Apply to motors (always forward for wheelchair — no reverse)
-    setMotorLeft(leftPWM, true);
-    setMotorRight(rightPWM, true);
-
-    // If stopping and both motors reached zero, go to idle
-    if (currentState == STATE_STOPPING && leftPWM == 0 && rightPWM == 0) {
-        currentState = STATE_IDLE;
-    }
-}
-
-
-// =============================================================================
-// COMMAND HANDLER
-// =============================================================================
-
-void handleCommand(char cmd) {
-    lastCommandTime = millis();
-
-    // E-stop overrides everything
-    if (currentState == STATE_ESTOP && cmd != 'S') {
-        // In e-stop, only 'S' (reset) is accepted
-        sendAck();
-        return;
-    }
-
-    switch (cmd) {
-        case 'F':  // Forward
-            currentState = STATE_FORWARD;
-            leftTarget  = min((int)maxSpeed, 255);
-            rightTarget = min((int)maxSpeed, 255);
-            break;
-
-        case 'L':  // Turn left (right motor fast, left motor slow)
-            currentState = STATE_TURNING_LEFT;
-            leftTarget  = TURN_SPEED_INNER;
-            rightTarget = TURN_SPEED_OUTER;
-            break;
-
-        case 'R':  // Turn right (left motor fast, right motor slow)
-            currentState = STATE_TURNING_RIGHT;
-            leftTarget  = TURN_SPEED_OUTER;
-            rightTarget = TURN_SPEED_INNER;
-            break;
-
-        case 'S':  // Stop (or reset from e-stop)
-            if (currentState == STATE_ESTOP) {
-                // Reset e-stop only if hardware button is released
-                if (digitalRead(ESTOP_PIN) == HIGH) {
-                    eStopTriggered = false;
-                    currentState = STATE_IDLE;
-                    digitalWrite(ESTOP_LED, LOW);
-                }
-                // If button still pressed, stay in ESTOP
-            } else {
-                currentState = STATE_STOPPING;
-                leftTarget  = 0;
-                rightTarget = 0;
-            }
-            break;
-
-        case 'E':  // Software e-stop from dashboard
-            killMotors();
-            currentState = STATE_ESTOP;
-            eStopTriggered = true;
-            digitalWrite(ESTOP_LED, HIGH);
-            break;
-
-        case 'V':  // Set max speed (next byte is speed 0-255)
-            // Wait for speed byte
-            if (Serial.available()) {
-                maxSpeed = constrain(Serial.read(), 0, 255);
-            }
-            break;
-
-        default:
-            // Unknown command — ignore
-            break;
-    }
-
-    sendAck();
-}
-
-
-// =============================================================================
-// SERIAL ACKNOWLEDGMENT
-// =============================================================================
-
-void sendAck() {
-    Serial.print("STATE:");
-    Serial.print(STATE_NAMES[currentState]);
-    Serial.print(" SPD:");
-    Serial.print((leftPWM + rightPWM) / 2);
-    Serial.print(" BAT:");
-    Serial.print(batteryVoltage, 1);
+void printHelp() {
     Serial.println();
+    Serial.println("===== NeuroDrive NODE 3 =====");
+    Serial.println("Protocol (Node 2): F=fwd L=left R=right S=stop E=estop");
+    Serial.println("Bench: w/x hub, a/d steer, q/e brake, f/g/b brake override, 0 hub off");
+    Serial.print("eStop="); Serial.print(eStop);
+    Serial.print("  driving="); Serial.print(driveActive);
+    Serial.print("  hub_step="); Serial.print(currentStep);
+    Serial.print("  steerPos="); Serial.print(steeringPosition);
+    Serial.print("  brakePos="); Serial.print(brakePosition);
+    Serial.print("  dac_found="); Serial.println(dac_found ? "YES" : "NO");
+    Serial.println("=============================");
 }
 
-
-// =============================================================================
-// BATTERY MONITORING
-// =============================================================================
-
-void checkBattery() {
-    unsigned long now = millis();
-    if (now - lastBatCheck < BAT_CHECK_INTERVAL) return;
-    lastBatCheck = now;
-
-    // Read ADC (average 10 samples for stability)
-    long sum = 0;
-    for (int i = 0; i < 10; i++) {
-        sum += analogRead(BAT_PIN);
+void i2cScan() {
+    Serial.println("[I2C] scanning...");
+    int found = 0;
+    for (uint8_t addr = 1; addr < 127; addr++) {
+        Wire.beginTransmission(addr);
+        if (Wire.endTransmission() == 0) {
+            Serial.print("  found 0x");
+            if (addr < 16) Serial.print('0');
+            Serial.println(addr, HEX);
+            found++;
+        }
     }
-    float adcAvg = sum / 10.0;
+    Serial.print("[I2C] devices: "); Serial.println(found);
+}
 
-    // Convert to voltage
-    batteryVoltage = (adcAvg / 1023.0) * 5.0 * BAT_DIVIDER_RATIO;
-
-    if (batteryVoltage < BAT_CUTOFF_V) {
-        // Critical — auto stop
-        if (!batteryLow) {
-            Serial.println("WARN:BAT_CRITICAL");
-            batteryLow = true;
-        }
-        killMotors();
-        currentState = STATE_STOPPING;
-        leftTarget = 0;
-        rightTarget = 0;
-    } else if (batteryVoltage < BAT_WARN_V) {
-        if (!batteryLow) {
-            Serial.println("WARN:BAT_LOW");
-            batteryLow = true;
-        }
+void readDacVoltage() {
+    if (!dac_found) { Serial.println("[DAC] not found"); return; }
+    Wire.requestFrom((uint8_t)0x60, (uint8_t)3);
+    if (Wire.available() >= 3) {
+        Wire.read();
+        uint8_t b1 = Wire.read();
+        uint8_t b2 = Wire.read();
+        uint16_t raw = ((b1 << 4) | (b2 >> 4)) & 0x0FFF;
+        Serial.print("[DAC] raw="); Serial.print(raw);
+        Serial.print("  V="); Serial.println((raw / 4095.0) * 5.0, 3);
     } else {
-        batteryLow = false;
+        Serial.println("[DAC] read failed");
     }
 }
 
-
 // =============================================================================
-// WATCHDOG — auto-stop if Pi goes silent
+// SETUP / LOOP
 // =============================================================================
-
-void checkWatchdog() {
-    if (currentState == STATE_ESTOP || currentState == STATE_IDLE) return;
-
-    unsigned long now = millis();
-    if (now - lastCommandTime > WATCHDOG_TIMEOUT) {
-        Serial.println("WARN:WATCHDOG");
-        currentState = STATE_STOPPING;
-        leftTarget  = 0;
-        rightTarget = 0;
-    }
-}
-
-
-// =============================================================================
-// SETUP
-// =============================================================================
-
 void setup() {
-    Serial.begin(SERIAL_BAUD);
+    Serial.begin(115200);
+    while (!Serial && millis() < 3000) { /* brief wait */ }
 
-    // Motor pins
-    pinMode(LEFT_EN,   OUTPUT);
-    pinMode(LEFT_FWD,  OUTPUT);
-    pinMode(LEFT_REV,  OUTPUT);
-    pinMode(RIGHT_EN,  OUTPUT);
-    pinMode(RIGHT_FWD, OUTPUT);
-    pinMode(RIGHT_REV, OUTPUT);
+    pinMode(STEER_R_EN, OUTPUT); pinMode(STEER_L_EN, OUTPUT);
+    pinMode(STEER_RPWM, OUTPUT); pinMode(STEER_LPWM, OUTPUT);
+    digitalWrite(STEER_R_EN, HIGH); digitalWrite(STEER_L_EN, HIGH);
+    analogWrite(STEER_RPWM, 0); analogWrite(STEER_LPWM, 0);
 
-    // E-stop
-    pinMode(ESTOP_PIN, INPUT_PULLUP);
-    pinMode(ESTOP_LED, OUTPUT);
-    attachInterrupt(digitalPinToInterrupt(ESTOP_PIN), eStopISR, FALLING);
+    pinMode(BRAKE_R_EN, OUTPUT); pinMode(BRAKE_L_EN, OUTPUT);
+    pinMode(BRAKE_RPWM, OUTPUT); pinMode(BRAKE_LPWM, OUTPUT);
+    digitalWrite(BRAKE_R_EN, HIGH); digitalWrite(BRAKE_L_EN, HIGH);
+    analogWrite(BRAKE_RPWM, 0); analogWrite(BRAKE_LPWM, 0);
 
-    // Battery ADC
-    pinMode(BAT_PIN, INPUT);
+    Wire.begin();
+    Wire.beginTransmission(0x60);
+    if (Wire.endTransmission() == 0) {
+        dac_found = true;
+        dac.begin(0x60);
+        dac.setVoltage(THROTTLE_OFF, false);
+        Serial.println("[BOOT] DAC 0x60 found, hub idle");
+    } else {
+        Serial.println("[BOOT] DAC 0x60 NOT found -- send 'i' to scan");
+    }
 
-    // Start with motors off
-    killMotors();
-    digitalWrite(ESTOP_LED, LOW);
-
-    // Init timing
-    lastCommandTime = millis();
-    lastRampTime    = millis();
-    lastBatCheck    = millis();
-    lastAckTime     = millis();
-
-    Serial.println("NODE3:READY");
-    Serial.print("STATE:");
-    Serial.println(STATE_NAMES[STATE_IDLE]);
+    lastCmdMs = lastDriveMs = millis();
+    printHelp();
 }
-
-
-// =============================================================================
-// MAIN LOOP
-// =============================================================================
 
 void loop() {
-    // 1. Read serial commands from Pi
+    // ---- read all pending command bytes ----
     while (Serial.available()) {
-        char cmd = Serial.read();
-        if (cmd >= 'A' && cmd <= 'Z') {
-            handleCommand(cmd);
+        char c = Serial.read();
+        lastCmdMs = millis();
+        switch (c) {
+            // ---- NeuroDrive protocol (Node 2) ----
+            case 'F': cmdForward(); break;
+            case 'L': cmdLeft();    break;
+            case 'R': cmdRight();   break;
+            case 'S': case 's': case ' ': cmdStop(); break;
+            case 'E': cmdEStop();   break;
+
+            // ---- bench keys (serial monitor only) ----
+            case 'w':
+                if (brakePosition == 0) { brakeRelease(false); brakePosition = 1; }
+                hubSetStep(currentStep + 1); break;
+            case 'x': hubSetStep(currentStep - 1); break;
+            case '0': hubSetStep(0); break;
+            case 'a':
+                if (steeringPosition > -1) { steerLeft(); steeringPosition--; }
+                else Serial.println("[STEER] Already at LEFT limit."); break;
+            case 'd':
+                if (steeringPosition < 1) { steerRight(); steeringPosition++; }
+                else Serial.println("[STEER] Already at RIGHT limit."); break;
+            case '1': steerSpeed = SPEED_LOW;  Serial.println("[STEER] speed=LOW");  break;
+            case '2': steerSpeed = SPEED_MID;  Serial.println("[STEER] speed=MID");  break;
+            case '3': steerSpeed = SPEED_FULL; Serial.println("[STEER] speed=FULL"); break;
+            case '+': steerPulseMs = min((uint16_t)(steerPulseMs + 100), MAX_PULSE);
+                      Serial.print("[STEER] pulse="); Serial.println(steerPulseMs); break;
+            case '-': steerPulseMs = max((uint16_t)(steerPulseMs - 100), MIN_PULSE);
+                      Serial.print("[STEER] pulse="); Serial.println(steerPulseMs); break;
+            case 'q':
+                if (brakePosition == 1) { brakeEngage(false); brakePosition = 0; }
+                else Serial.println("[BRAKE] Already engaged."); break;
+            case 'e':
+                if (brakePosition == 0) { brakeRelease(false); brakePosition = 1; }
+                else Serial.println("[BRAKE] Already released."); break;
+            case 'z': stopBrake(); Serial.println("[BRAKE] stop"); break;
+            case 'f': brakePosition = 0; stopBrake(); Serial.println("[BRAKE] OVERRIDE -> ENGAGED"); break;
+            case 'g': brakePosition = 1; stopBrake(); Serial.println("[BRAKE] OVERRIDE -> RELEASED"); break;
+            case 'b': Serial.print("[BRAKE] Position = ");
+                      Serial.println(brakePosition == 0 ? "ENGAGED" : "RELEASED"); break;
+            case 'i': i2cScan(); break;
+            case 'v': readDacVoltage(); break;
+            case '?': printHelp(); break;
+
+            case '\n': case '\r': break;
+            default:
+                Serial.print("[?] unknown cmd '"); Serial.print(c); Serial.println("'");
+                break;
         }
     }
 
-    // 2. E-stop check (hardware button)
-    if (eStopTriggered && currentState == STATE_ESTOP) {
-        killMotors();
-        digitalWrite(ESTOP_LED, HIGH);
+    // ---- hold-to-drive watchdog: cut hub if F stops arriving ----
+    if (driveActive && (millis() - lastDriveMs > DRIVE_TIMEOUT_MS)) {
+        stopAll("hold timeout");
     }
 
-    // 3. Update motor ramp (smooth acceleration)
-    if (currentState != STATE_ESTOP) {
-        updateRamp();
+    // ---- steering pulse timeout ----
+    if (steerActive && (long)(millis() - steerEndMs) >= 0) {
+        stopSteering();
+        Serial.println("[STEER] pulse done");
     }
 
-    // 4. Watchdog — auto-stop if Pi is silent
-    checkWatchdog();
+    // ---- brake pulse timeout (held brake ignores this) ----
+    if (brakeActive && !brakeHold && (long)(millis() - brakeEndMs) >= 0) {
+        stopBrake();
+        Serial.println("[BRAKE] pulse done");
+    }
 
-    // 5. Battery monitoring
-    checkBattery();
-
-    // 6. Periodic ack to Pi (so dashboard knows Arduino is alive)
-    unsigned long now = millis();
-    if (now - lastAckTime > ACK_INTERVAL) {
-        lastAckTime = now;
-        sendAck();
+    // ---- comms watchdog: total silence -> full stop backstop ----
+    if (!eStop && (millis() - lastCmdMs > WATCHDOG_MS)) {
+        if (driveActive || steerActive) stopAll("comms lost");
+        lastCmdMs = millis();
     }
 }

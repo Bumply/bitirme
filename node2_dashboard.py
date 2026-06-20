@@ -63,8 +63,11 @@ except ImportError:
 UDP_LISTEN_IP   = "0.0.0.0"
 UDP_LISTEN_PORT = 5000
 
-# UDP sender — sends calibration commands to Node 1
-NODE1_IP   = "192.168.4.1"   # Coral AP default
+# UDP sender — sends calibration commands to Node 1.
+# NODE1_IP is only a *fallback*: the real address is auto-learned from the
+# source IP of the command packets Node 1 streams to us (works on any LAN,
+# so we no longer depend on the old Coral AP address).
+NODE1_IP   = "192.168.1.0"   # fallback only; overwritten once Node 1 is heard
 NODE1_PORT = 5001            # Calibration control port
 
 # Serial to Node 3 (Arduino)
@@ -217,19 +220,23 @@ class UDPListener:
 
     def __init__(self, ip=UDP_LISTEN_IP, port=UDP_LISTEN_PORT):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        # NOTE: deliberately NOT setting SO_REUSEADDR. If a second dashboard
+        # instance is accidentally launched, we want its bind to FAIL loudly
+        # rather than silently share :5000 and split incoming command packets
+        # (which would make the UI appear to drop packets at random).
         self.sock.bind((ip, port))
         self.sock.settimeout(0.5)
         print(f"[UDP] Listening on {ip}:{port}")
 
     def receive(self):
+        """Return (packet_dict, sender_ip) or (None, None)."""
         try:
             data, addr = self.sock.recvfrom(1024)
-            return json.loads(data.decode())
+            return json.loads(data.decode()), addr[0]
         except socket.timeout:
-            return None
+            return None, None
         except (json.JSONDecodeError, UnicodeDecodeError):
-            return None
+            return None, None
 
     def close(self):
         self.sock.close()
@@ -260,6 +267,8 @@ class DashboardState:
         self.cal_total      = 0
         self.cal_progress   = 0.0
         self.cal_results    = None     # accuracy after fine-tuning
+        # Auto-learned address of Node 1 (Coral), from incoming packets
+        self.node1_ip       = None
 
     def update(self, cmd, conf, reason):
         with self._lock:
@@ -294,6 +303,7 @@ class DashboardState:
                 "cal_total":    self.cal_total,
                 "cal_progress": self.cal_progress,
                 "cal_results":  self.cal_results,
+                "node1_ip":     self.node1_ip,
             }
 
 
@@ -333,13 +343,14 @@ class CalibrationEngine:
         self.running = False
 
     def _send_to_node1(self, msg):
-        """Send calibration control message to Node 1."""
+        """Send calibration control message to Node 1 (auto-learned IP)."""
+        target_ip = self.state.node1_ip or NODE1_IP
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            sock.sendto(json.dumps(msg).encode(), (NODE1_IP, NODE1_PORT))
+            sock.sendto(json.dumps(msg).encode(), (target_ip, NODE1_PORT))
             sock.close()
         except Exception as e:
-            print(f"[CAL] Failed to send to Node 1: {e}")
+            print(f"[CAL] Failed to send to Node 1 ({target_ip}): {e}")
 
     def _run_protocol(self):
         """Main calibration protocol loop."""
@@ -434,7 +445,12 @@ def run_command_loop(udp_listener, safety, serial_relay, state, stop_event):
     print("[LOOP] Command processing started...")
 
     while not stop_event.is_set():
-        packet = udp_listener.receive()
+        packet, sender_ip = udp_listener.receive()
+
+        # Learn / refresh Node 1's address from whoever is streaming to us
+        if packet and sender_ip and state.node1_ip != sender_ip:
+            state.node1_ip = sender_ip
+            print(f"[LOOP] Node 1 address learned: {sender_ip}")
 
         if packet and "cmd" in packet:
             cmd  = packet["cmd"]
@@ -473,23 +489,23 @@ def build_dashboard(state, safety, serial_relay, cal_engine):
         body { background: #0a0a0a !important; }
 
         .cmd-display {
-            font-size: 8rem;
+            font-size: 5rem;
             font-weight: 900;
             line-height: 1;
             text-shadow: 0 0 40px currentColor, 0 0 80px currentColor;
             transition: all 0.3s ease;
         }
         .cmd-sublabel {
-            font-size: 1.5rem;
+            font-size: 1.15rem;
             font-weight: 600;
             letter-spacing: 0.3em;
             text-transform: uppercase;
             opacity: 0.8;
         }
         .cmd-card {
-            border-radius: 24px;
+            border-radius: 20px;
             transition: background-color 0.3s ease, box-shadow 0.3s ease;
-            min-height: 280px;
+            min-height: 170px;
         }
         .stat-card {
             background: #1a1a2e;
@@ -597,18 +613,18 @@ def build_dashboard(state, safety, serial_relay, cal_engine):
         # ==============================================================
         # TAB 1: DRIVE
         # ==============================================================
-        with ui.tab_panel(drive_tab).classes("p-4"):
-            with ui.row().classes("w-full gap-4 flex-nowrap"):
+        with ui.tab_panel(drive_tab).classes("p-2"):
+            with ui.row().classes("w-full gap-3 flex-nowrap"):
 
                 # ── Left: Big command display ─────────────────────────
-                with ui.column().classes("flex-1 gap-4"):
+                with ui.column().classes("flex-1 gap-2"):
                     cmd_card = ui.element("div").classes(
-                        "cmd-card p-8 flex flex-col items-center justify-center"
+                        "cmd-card p-3 flex flex-col items-center justify-center"
                     ).style("background: #450a0a; box-shadow: 0 0 60px rgba(239,68,68,0.15);")
 
                     with cmd_card:
                         cmd_icon_el = ui.icon("stop_circle").classes(
-                            "text-6xl mb-2").style("color: #ef4444;")
+                            "text-4xl mb-1").style("color: #ef4444;")
                         cmd_label = ui.label("S").classes("cmd-display").style(
                             "color: #ef4444;")
                         cmd_sublabel = ui.label("STOP").classes("cmd-sublabel").style(
@@ -645,7 +661,7 @@ def build_dashboard(state, safety, serial_relay, cal_engine):
                                 "text-[10px] text-gray-500 tracking-wider")
 
                 # ── Middle: Controls + E-stop ─────────────────────────
-                with ui.column().classes("gap-4").style("width: 280px;"):
+                with ui.column().classes("gap-2").style("width: 260px;"):
                     ui.label("MANUAL OVERRIDE").classes(
                         "text-xs font-black tracking-[0.3em] text-gray-500 text-center")
 
@@ -653,40 +669,40 @@ def build_dashboard(state, safety, serial_relay, cal_engine):
                     with ui.column().classes("items-center gap-2"):
                         ui.button("FORWARD", icon="arrow_upward",
                                   on_click=lambda: manual_cmd("F")).classes(
-                            "control-btn bg-green-700 text-white w-48 h-14")
+                            "control-btn bg-green-700 text-white w-44 h-11")
                         with ui.row().classes("gap-2"):
                             ui.button("LEFT", icon="arrow_back",
                                       on_click=lambda: manual_cmd("L")).classes(
-                                "control-btn bg-blue-700 text-white w-[92px] h-14")
+                                "control-btn bg-blue-700 text-white w-[84px] h-11")
                             ui.button("RIGHT", icon="arrow_forward",
                                       on_click=lambda: manual_cmd("R")).classes(
-                                "control-btn bg-amber-700 text-white w-[92px] h-14")
+                                "control-btn bg-amber-700 text-white w-[84px] h-11")
                         ui.button("STOP", icon="stop_circle",
                                   on_click=lambda: manual_cmd("S")).classes(
-                            "control-btn bg-red-700 text-white w-48 h-14")
+                            "control-btn bg-red-700 text-white w-44 h-11")
 
-                    ui.separator().classes("my-2")
+                    ui.separator().classes("my-1")
 
-                    # E-stop
+                    # E-stop — always visible, never below the fold
                     ui.button("E-STOP", icon="dangerous",
                               on_click=lambda: do_estop()).classes(
-                        "estop-btn bg-red-800 text-white w-full h-20")
+                        "estop-btn bg-red-800 text-white w-full h-14")
                     ui.button("Reset E-Stop", icon="restart_alt",
                               on_click=lambda: do_reset()).classes(
-                        "control-btn bg-gray-700 text-white w-full h-10 text-sm")
+                        "control-btn bg-gray-700 text-white w-full h-8 text-sm")
 
                     # Speed slider
                     ui.label("MAX SPEED").classes(
-                        "text-xs font-black tracking-[0.3em] text-gray-500 text-center mt-2")
+                        "text-xs font-black tracking-[0.3em] text-gray-500 text-center mt-1")
                     speed_display = ui.label(f"{MAX_SPEED}%").classes(
-                        "text-2xl font-black text-white text-center")
+                        "text-xl font-black text-white text-center")
                     speed_slider = ui.slider(
                         min=0, max=100, value=MAX_SPEED,
                         on_change=lambda e: _update_speed(e.value),
                     ).classes("w-full")
 
                 # ── Right: Log + distribution ─────────────────────────
-                with ui.column().classes("flex-1 gap-4"):
+                with ui.column().classes("flex-1 gap-2"):
                     # Command distribution
                     ui.label("DISTRIBUTION").classes(
                         "text-xs font-black tracking-[0.3em] text-gray-500")
@@ -698,7 +714,7 @@ def build_dashboard(state, safety, serial_relay, cal_engine):
                     ui.label("COMMAND LOG").classes(
                         "text-xs font-black tracking-[0.3em] text-gray-500")
                     log_container = ui.column().classes(
-                        "w-full gap-0 overflow-auto").style("max-height: 300px;")
+                        "w-full gap-0 overflow-auto").style("max-height: 170px;")
 
         # ==============================================================
         # TAB 2: CALIBRATE
@@ -783,7 +799,8 @@ def build_dashboard(state, safety, serial_relay, cal_engine):
                     ui.label("Network").classes("text-sm font-bold text-gray-400 mb-3")
                     with ui.row().classes("justify-between"):
                         ui.label("Node 1 IP").classes("text-sm text-gray-300")
-                        ui.label(NODE1_IP).classes("text-sm font-mono text-white")
+                        node1_ip_label = ui.label("not heard yet").classes(
+                            "text-sm font-mono text-white")
                     with ui.row().classes("justify-between"):
                         ui.label("UDP Listen Port").classes("text-sm text-gray-300")
                         ui.label(str(UDP_LISTEN_PORT)).classes("text-sm font-mono text-white")
@@ -863,6 +880,12 @@ def build_dashboard(state, safety, serial_relay, cal_engine):
     # ── Periodic UI update (every 200ms) ──────────────────────────────
     def update_ui():
         snap = state.snapshot()
+        try:
+            with open("/tmp/update_ui_debug.txt", "w") as _f:
+                _f.write(f"state_id={id(state)} packets={snap['packets']} "
+                         f"uptime={snap['uptime']:.0f}")
+        except Exception:
+            pass
         cmd = snap["cmd"]
         info = CMD_INFO.get(cmd, CMD_INFO["S"])
 
@@ -892,6 +915,9 @@ def build_dashboard(state, safety, serial_relay, cal_engine):
         reason_val.text = snap["reason"][:8]
         reason_color = "#22c55e" if snap["reason"] == "OK" else "#f59e0b" if snap["reason"] == "MANUAL" else "#ef4444"
         reason_val.style(f"color: {reason_color};")
+
+        # Settings: live Node 1 IP
+        node1_ip_label.text = snap["node1_ip"] or "not heard yet"
 
         # Node 1 status
         ago = time.time() - snap["last_pkt"] if snap["last_pkt"] > 0 else 999
@@ -1020,6 +1046,12 @@ def main():
     cmd_thread.start()
 
     if HAS_NICEGUI:
+        @app.get("/api/state")
+        def _debug_state():
+            snap = state.snapshot()
+            snap["_state_id"] = id(state)
+            return snap
+
         build_dashboard(state, safety, serial_relay, cal_engine)
         ui.run(
             host="0.0.0.0",

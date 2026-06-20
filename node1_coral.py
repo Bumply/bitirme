@@ -23,6 +23,7 @@ Usage:
 ================================================================================
 """
 
+import os
 import time
 import threading
 import collections
@@ -618,12 +619,15 @@ class CommandSender:
         self.last_cmd = None
         print(f"[WIFI] UDP target: {ip}:{port}")
 
-    def send(self, command, confidence):
-        packet = json.dumps({
+    def send(self, command, confidence, extra=None):
+        payload = {
             "cmd":  command,
             "conf": round(confidence, 3),
             "ts":   time.time(),
-        }).encode()
+        }
+        if extra:
+            payload.update(extra)   # per-channel + model diagnostics for the dashboard Debug tab
+        packet = json.dumps(payload).encode()
         try:
             self.sock.sendto(packet, self.addr)
         except OSError:
@@ -956,8 +960,26 @@ def run_inference_thread(shared_state, stop_event, engine, smoother,
         # LED blink
         leds.inference_blink()
 
-        # Send to Node 2
-        sender.send(smooth_cmd, confidence)
+        # Per-channel + model diagnostics for the dashboard Debug tab.
+        # window is (BUFFER_SIZE, N_CH) filtered µV.
+        ch_rms = np.sqrt(np.mean(window ** 2, axis=0))
+        ch_pp  = window.max(axis=0) - window.min(axis=0)
+        ds     = window[::10, :]            # ~25 pts/ch downsampled sparkline
+        debug = {
+            "raw":      raw_cmd,
+            "vote":     vote_status,
+            "probs":    [round(float(p), 3) for p in probs],
+            "rms":      [round(float(x), 1) for x in ch_rms],
+            "pp":       [round(float(x), 1) for x in ch_pp],
+            "wave":     [[round(float(v), 1) for v in ds[:, c]]
+                         for c in range(window.shape[1])],
+            "ch":       CHANNELS,
+            "infer_ms": round(t_infer, 1),
+            "fs":       FS,
+        }
+
+        # Send to Node 2 (command + diagnostics)
+        sender.send(smooth_cmd, confidence, debug)
 
         t_total = (time.perf_counter() - t_total_start) * 1000
 
@@ -1315,7 +1337,11 @@ def main():
 
     # ── Launch threads ────────────────────────────────────────────────
     if RUNNING_ON_CORAL:
-        ads_reader = ADS1299Reader()
+        ads_reader = ADS1299Reader(
+            test_signal=os.environ.get("ND_TEST_SIGNAL", "") == "1")
+        if ads_reader._test_signal:
+            print("[INIT] *** INTERNAL TEST-SIGNAL MODE *** "
+                  "(square wave on all channels; electrodes ignored)")
         stream_thread = threading.Thread(
             target=run_stream_thread_hardware,
             args=(ads_reader, filter_chain, shared_state, stop_event),

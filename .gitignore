@@ -31,3 +31,7 @@ env/
 
 # uv conversion/training venvs
 .venv-*/
+
+# Local Arduino sketch backups (reorg leftovers)
+node3_motor_control_old/
+node3_motor_control_old1/
