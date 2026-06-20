@@ -261,7 +261,7 @@
             <h3>Node 1: Coral Dev Board Mini</h3>
             <div class="hw">ARM CPU + Edge TPU + ADS1299 ADC</div>
             <ul>
-                <li>8-channel 24-bit EEG acquisition via SPI (1 MHz)</li>
+                <li>24-bit EEG acquisition via SPI (1 MHz) &mdash; designed for 8 channels; current prototype wires 4 (C3, Cz, C4, CPz)</li>
                 <li>50Hz notch + 8-30Hz bandpass filtering</li>
                 <li>EEGNet inference on Edge TPU (~4ms)</li>
                 <li>Online adaptation (pseudo-label learning)</li>
@@ -271,14 +271,14 @@
         </div>
         <div class="node-card n2">
             <h3>Node 2: Raspberry Pi 5</h3>
-            <div class="hw">4GB RAM + WiFi + USB Serial</div>
+            <div class="hw">4GB RAM + WiFi + USB Serial + 7" Touchscreen</div>
             <ul>
-                <li>NiceGUI dark-theme web dashboard</li>
-                <li>Drive / Calibrate / Settings tabs</li>
+                <li>Native PyQt5 fullscreen touchscreen app</li>
+                <li>Drive / Debug / Calibrate tabs</li>
+                <li>MANUAL / EEG mode toggle + phone web control</li>
                 <li>Safety logic + heartbeat timeout (3s)</li>
-                <li>Serial relay to Arduino (115200 baud)</li>
-                <li>Visual calibration cue protocol</li>
-                <li>Manual D-pad override + E-stop</li>
+                <li>Auto-reconnecting serial relay to Arduino (115200 baud)</li>
+                <li>Per-channel lead-off + manual override + E-stop</li>
             </ul>
         </div>
         <div class="node-card n3">
@@ -313,7 +313,7 @@
     <div class="grid-2">
         <div class="fig">
             <img src="assets/channel_map.png" alt="EEG Channel Placement" />
-            <div class="caption">8-channel electrode placement following the International 10-20 system. Color coding shows which channels are primary drivers for each command. Supporting channels improve spatial filtering.</div>
+            <div class="caption">8-channel electrode placement following the International 10-20 system (design target). Color coding shows which channels are primary drivers for each command; supporting channels improve spatial filtering. The current prototype wires the 4 most informative sites &mdash; C3, Cz, C4, CPz.</div>
         </div>
         <div class="fig">
             <img src="assets/psd_comparison.png" alt="Power Spectral Density" />
@@ -408,7 +408,7 @@
     <div class="grid-2">
         <table class="data-table">
             <tr><th>Parameter</th><th>Value</th></tr>
-            <tr><td>Input shape</td><td>(1, 8, 250)</td></tr>
+            <tr><td>Input shape</td><td>(1, 8, 250) design / (1, 4, 250) current build</td></tr>
             <tr><td>Temporal filters (F1)</td><td>8 (kernel=64, ~256ms)</td></tr>
             <tr><td>Depth multiplier (D)</td><td>2</td></tr>
             <tr><td>Separable filters (F2)</td><td>16</td></tr>
@@ -567,7 +567,7 @@
 <!-- ================================================================ -->
 <section id="dashboard">
     <h2>Dashboard</h2>
-    <p class="section-desc">NiceGUI-based web interface served from the Raspberry Pi 5. Three tabs: Drive (real-time control monitoring), Calibrate (guided EEG recording), Settings (system configuration).</p>
+    <p class="section-desc">Native PyQt5 fullscreen app running directly on the Raspberry Pi 5's 7" touchscreen (replaced the earlier NiceGUI web stack, which re-executed per request and dropped the kiosk websocket). Drive (real-time control + MANUAL/EEG mode toggle), Debug (per-channel signals + lead-off contact), and Calibrate (guided EEG recording). A lightweight phone web control page is also served at <code>http://&lt;pi5-ip&gt;:8000</code>.</p>
 
     <div class="fig">
         <img src="assets/dashboard_wireframe.png" alt="Dashboard Wireframe" />
@@ -650,7 +650,7 @@
         <tr><td>Model</td><td>EEGNet (Lawhern et al. 2018)</td></tr>
         <tr><td>Parameters</td><td>1,684</td></tr>
         <tr><td>Hyperparameters</td><td>F1=8, D=2, F2=16, kernel=64, dropout=0.5</td></tr>
-        <tr><td>Input shape</td><td>(1, 8, 250) — 1 second × 8 channels</td></tr>
+        <tr><td>Input shape</td><td>(1, 8, 250) — 1 s × 8 ch (design); current 4-ch build retrains to (1, 4, 250)</td></tr>
         <tr><td>Output classes</td><td>4 (Forward, Left, Right, Stop)</td></tr>
         <tr><td>Quantization</td><td>int8 TFLite (Edge TPU)</td></tr>
         <tr><td>Training set</td><td>BCI-IV-2a (8 subjects, motor imagery)</td></tr>
@@ -705,8 +705,8 @@
         <tr><td>Pi 5 → Coral (calibration)</td><td>UDP over WiFi, port 5001</td></tr>
         <tr><td>Pi 5 → Arduino</td><td>USB Serial @ 115200 baud</td></tr>
         <tr><td>Packet format</td><td>JSON {"cmd", "conf", "ts"}</td></tr>
-        <tr><td>WiFi mode</td><td>Coral hosts AP (SSID "NeuroDrive", IP 192.168.4.1)</td></tr>
-        <tr><td>Dashboard URL</td><td>http://192.168.4.1:8081</td></tr>
+        <tr><td>WiFi mode</td><td>Coral hosts AP (SSID "NeuroDrive", IP 192.168.4.1; Pi 5 → 192.168.4.2)</td></tr>
+        <tr><td>Dashboard</td><td>Native PyQt5 app on the Pi touchscreen; phone web control at http://192.168.4.2:8000</td></tr>
     </table>
 
     <h3>Safety</h3>
@@ -720,13 +720,13 @@
     <h3>User Interface</h3>
     <table class="data-table">
         <tr><th>Parameter</th><th>Value</th></tr>
-        <tr><td>Dashboard</td><td>NiceGUI (Python) web app</td></tr>
-        <tr><td>Theme</td><td>Dark, custom CSS</td></tr>
-        <tr><td>Tabs</td><td>Drive, Calibrate, Settings</td></tr>
-        <tr><td>Drive tab</td><td>Live command, confidence bar, manual D-pad, software E-stop, command log, packet stats</td></tr>
+        <tr><td>Dashboard</td><td>Native PyQt5 fullscreen app (Pi touchscreen) + phone web control page</td></tr>
+        <tr><td>Theme</td><td>Dark, custom Qt stylesheet</td></tr>
+        <tr><td>Tabs</td><td>Drive, Debug, Calibrate</td></tr>
+        <tr><td>Drive tab</td><td>Live command, confidence bar, MANUAL/EEG mode toggle, hold-to-drive forward, software E-stop, command log</td></tr>
+        <tr><td>Debug tab</td><td>Per-channel signal (C3/Cz/C4/CPz), RMS/peak-to-peak, lead-off contact indicators</td></tr>
         <tr><td>Calibrate tab</td><td>Visual cue area, trial progress, phase indicator, before/after accuracy</td></tr>
-        <tr><td>Settings tab</td><td>Network, safety thresholds, serial port, calibration timing, model selection</td></tr>
-        <tr><td>Manual override</td><td>D-pad always preempts BCI commands while held</td></tr>
+        <tr><td>Manual override</td><td>MANUAL mode + held controls preempt BCI commands</td></tr>
         <tr><td>Refresh rate</td><td>~ 2 Hz (matches inference rate)</td></tr>
     </table>
 

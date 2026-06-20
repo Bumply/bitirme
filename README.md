@@ -9,6 +9,8 @@
 
 3-node Brain-Computer Interface that reads motor imagery EEG, classifies it with EEGNet on a Coral Edge TPU, and drives a wheelchair.
 
+> **Current build:** designed for 8-channel acquisition; the present prototype runs **4 channels** (C3, Cz, C4, CPz) on an ADS1299-4 front-end. Node 2's dashboard is now a **native PyQt5 touchscreen app** (`node2_app.py`) with MANUAL/EEG modes and phone web control, replacing the earlier NiceGUI web stack.
+
 <p align="center">
   <img src="docs/assets/architecture.png" alt="NeuroDrive Architecture" width="700" />
 </p>
@@ -26,13 +28,13 @@ git clone https://github.com/Bumply/bitirme.git NeuroDrive
 cd NeuroDrive
 
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
-pip install moabb mne numpy scipy scikit-learn matplotlib onnx nicegui pyserial
+pip install moabb mne numpy scipy scikit-learn matplotlib onnx pyserial
 
 python node1_sitl_pipeline.py    # DSP with replayed EEG
 python node1_training.py         # Train EEGNet (needs GPU)
 python node1_calibrate.py        # Personal fine-tuning
 python node1_inference.py        # Real-time SITL inference
-python node2_dashboard.py        # Dashboard at localhost:8080
+python3 node2_app.py             # Pi 5 native touchscreen app (--windowed for dev)
 python bench_test.py             # Run all tests
 ```
 
@@ -48,7 +50,8 @@ node1_training.py            # EEGNet pre-training (PyTorch + CUDA)
 node1_calibrate.py           # Personal fine-tuning with BN freeze
 node1_inference.py           # Real-time SITL inference
 node1_coral.py               # Production: ADS1299 + TFLite + calibration + adaptation
-node2_dashboard.py           # Dashboard + safety + serial relay
+node2_app.py                 # Pi 5 native PyQt5 touchscreen app (drive/debug/calibrate + phone web)
+node2_dashboard.py           # Legacy NiceGUI web dashboard (superseded by node2_app.py)
 node3_motor_control/
   node3_motor_control.ino    # Arduino state machine + ramp + E-stop
 bench_test.py                # Automated test suite

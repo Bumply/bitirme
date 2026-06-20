@@ -8,14 +8,15 @@ A 3-node Brain-Computer Interface that reads motor imagery EEG, classifies it wi
 
 | Capability | Specification |
 |---|---|
-| Channels | 8 simultaneous |
+| Channels | 8 simultaneous (design); 4 wired in current prototype (C3, Cz, C4, CPz) |
 | ADC | ADS1299 (24-bit sigma-delta) |
 | Sampling rate | 250 SPS per channel |
 | Reference voltage | 2.64 V |
 | Input resolution | ~0.31 µV/LSB at gain 24 |
 | Interface | SPI @ 1 MHz |
 | Lead-off detection | Per-channel, parsed from ADS1299 status bytes |
-| Channel layout | FC3, FC4, C3, Cz, C4, CP3, CP4, FCz (10-20 system) |
+| Channel layout (design) | FC3, FC4, C3, Cz, C4, CP3, CP4, FCz (10-20 system) |
+| Channel layout (current build) | C3, Cz, C4, CPz — the 4 most informative motor-cortex sites |
 
 ## Signal Processing
 
@@ -36,7 +37,7 @@ A 3-node Brain-Computer Interface that reads motor imagery EEG, classifies it wi
 | Architecture | Temporal Conv → Depthwise Spatial Conv → Separable Conv → Dense |
 | Parameters | 1,684 |
 | Hyperparameters | F1 = 8, D = 2, F2 = 16, kernel = 64, dropout = 0.5 |
-| Input shape | (1, 8, 250) — 1 second of 8-channel EEG |
+| Input shape | (1, 8, 250) — 1 s of 8-channel EEG (design); current 4-ch build retrains to (1, 4, 250) |
 | Output | 4-class softmax (Forward, Left, Right, Stop) |
 | Quantization | int8 TFLite (Edge TPU compatible) |
 | Training set | BCI-IV-2a (8 subjects, motor imagery) |
@@ -93,9 +94,9 @@ A 3-node Brain-Computer Interface that reads motor imagery EEG, classifies it wi
 | Pi 5 → Coral (calibration) | UDP packets over WiFi, port 5001 |
 | Pi 5 → Arduino | USB Serial @ 115200 baud |
 | Packet format | JSON `{"cmd": "F", "conf": 0.87, "ts": ...}` |
-| WiFi mode | Coral hosts AP (SSID "NeuroDrive", IP 192.168.4.1) |
-| Dashboard URL | `http://<pi5-ip>:8080` (NiceGUI runs on Node 2 / Pi 5, not the Coral) |
-| Dashboard port | 8080 |
+| WiFi mode | Coral hosts AP (SSID "NeuroDrive", IP 192.168.4.1; Pi 5 → 192.168.4.2) |
+| Dashboard | Native PyQt5 app on the Pi 5 touchscreen (not browser-based) |
+| Phone web control | `http://<pi5-ip>:8000` (lightweight remote control page served by Node 2) |
 
 ## Safety
 
@@ -114,13 +115,13 @@ A 3-node Brain-Computer Interface that reads motor imagery EEG, classifies it wi
 
 | Capability | Specification |
 |---|---|
-| Dashboard | NiceGUI (Python) web app |
-| Theme | Dark, custom CSS |
-| Tabs | Drive, Calibrate, Settings |
-| Drive tab | Live command display, confidence bar, manual D-pad, software E-stop, scrolling command log, packet stats |
+| Dashboard | Native PyQt5 fullscreen app on the Pi 5 touchscreen + phone web control page |
+| Theme | Dark, custom Qt stylesheet |
+| Tabs | Drive, Debug, Calibrate |
+| Drive tab | Live command, confidence bar, MANUAL/EEG mode toggle, hold-to-drive forward, software E-stop, command log |
+| Debug tab | Per-channel signal (C3/Cz/C4/CPz), RMS / peak-to-peak, per-channel lead-off contact indicators |
 | Calibrate tab | Visual cue area, trial progress, phase indicator, before/after accuracy |
-| Settings tab | Network config, safety thresholds, serial port, calibration timing, model selection, adaptation toggle |
-| Manual override | Dashboard D-pad always preempts BCI commands while held |
+| Manual override | MANUAL mode + held on-screen controls preempt BCI commands |
 | Live data | Updated at ~ 2 Hz (matching inference rate) |
 
 ## Hardware Inventory
