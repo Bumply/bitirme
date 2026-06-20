@@ -225,7 +225,7 @@
     <div class="stats">
         <div class="stat-card">
             <div class="number">8</div>
-            <div class="label">EEG Channels (24-bit)</div>
+            <div class="label">EEG Channels (8 design · 4 wired)</div>
         </div>
         <div class="stat-card">
             <div class="number">4</div>
@@ -447,18 +447,18 @@
     <h3>Cross-Subject Pre-Training</h3>
     <div class="fig">
         <img src="assets/training_curves.png" alt="Training Curves" />
-        <div class="caption">Training on subjects 1-8, validated on held-out windows. Loss converges around epoch 80, accuracy plateaus at ~43%. Early stopping triggered at epoch ~120. The gap between train and val accuracy indicates subject-specific patterns that cross-subject training can't capture -- this is why personal calibration matters.</div>
+        <div class="caption">Training on subjects 1-8, validated on held-out windows. Validation accuracy plateaus near 41% and early stopping halts training around epoch 40. The gap between train and val accuracy reflects subject-specific patterns that cross-subject training can't capture -- this is why personal calibration matters.</div>
     </div>
 
     <div class="fig">
         <img src="assets/per_subject_accuracy.png" alt="Per-Subject Accuracy" />
-        <div class="caption">Accuracy varies significantly across subjects (33-51%), which is typical in BCI. Some people produce stronger ERD patterns than others. Subject 9 (green) shows accuracy after personal calibration -- the model adapts to individual brain signatures.</div>
+        <div class="caption">Leave-one-subject-out accuracy across all 9 subjects (26-45%, mean 34%) -- each bar trains on the other 8 and tests on that subject. Spread is typical of BCI: some people produce far stronger ERD than others. Subject 9 (orange) is the held-out test subject used elsewhere on this page; the red line is chance (25%).</div>
     </div>
 
     <div class="grid-2">
         <div class="fig">
             <img src="assets/confusion_matrix.png" alt="Confusion Matrix" />
-            <div class="caption">Cross-subject confusion matrix. Forward (feet) and Right (left hand) are best classified. Left/Stop confusion is expected -- tongue imagery produces a less distinct EEG pattern.</div>
+            <div class="caption">Confusion matrix on held-out subject 9 (overall 41.6%, chance 25%). Stop (57%) and Forward (48%) are classified best; Left (24%) is weakest and is most often misread as Right. This per-class imbalance is exactly what personal calibration corrects.</div>
         </div>
         <div class="fig">
             <img src="assets/command_distribution.png" alt="Command Distribution" />
@@ -469,16 +469,16 @@
     <h3>Personal Fine-Tuning</h3>
     <div class="fig">
         <img src="assets/finetuning_curves.png" alt="Fine-Tuning Curves" />
-        <div class="caption">Fine-tuning on held-out subject data with frozen Blocks 1+2. The model adapts to individual patterns by training only Block 3 and the classifier head. Expected post-calibration accuracy with proper electrode setup is 60-75%.</div>
+        <div class="caption">Within-subject calibration on subject 9 with Blocks 1+2 frozen -- only Block 3 and the classifier head are trained. Held-out accuracy rises from 42% to 57%. With clean electrodes and stronger imagery, 60-75% is a realistic target.</div>
     </div>
 
     <div class="fig">
         <img src="assets/calibration_impact.png" alt="Calibration Impact" />
-        <div class="caption">Per-class improvement from personal calibration. All four classes benefit, with the largest gains in Forward (+20pp) and Stop (+11pp). The model learns individual-specific spatial patterns that cross-subject training misses.</div>
+        <div class="caption">Per-class accuracy before vs after personal calibration on subject 9. The dramatic gain is in Left (25%->82%), with Stop also improving; overall accuracy climbs from 42% to 57%. Calibration learns individual-specific spatial patterns that cross-subject training misses.</div>
     </div>
 
     <div class="callout success">
-        <strong>Key insight:</strong> 43% cross-subject accuracy sounds low, but it's 1.7x chance level (25%) across 4 classes, with 8 different brains. Personal calibration closes the gap. Published EEGNet papers report 60-85% with personal data, and our architecture matches their configuration.
+        <strong>Key insight:</strong> cross-subject accuracy is 41.6% on the held-out subject (1.7x chance) and 34% averaged leave-one-subject-out across all 9 brains -- modest, as expected for a generic 4-class MI model. The point is what calibration does: on subject 9 it lifts accuracy to 57%, and published EEGNet work reaches 60-85% with per-user data. Honest takeaway: this system needs per-user calibration to be reliable, which is why it's built into the pipeline.
     </div>
 </section>
 
@@ -654,8 +654,8 @@
         <tr><td>Output classes</td><td>4 (Forward, Left, Right, Stop)</td></tr>
         <tr><td>Quantization</td><td>int8 TFLite (Edge TPU)</td></tr>
         <tr><td>Training set</td><td>BCI-IV-2a (8 subjects, motor imagery)</td></tr>
-        <tr><td>Cross-subject accuracy</td><td>43 % (chance = 25 %)</td></tr>
-        <tr><td>Personal calibration accuracy</td><td>Target 60 - 75 % (4-class) with proper electrode setup</td></tr>
+        <tr><td>Cross-subject accuracy</td><td>41.6 % held-out subject 9 · 34 % leave-one-subject-out mean (chance 25 %)</td></tr>
+        <tr><td>Personal calibration accuracy</td><td>57 % measured (subject 9, 42 %→57 %); target 60 - 75 % with clean electrodes</td></tr>
         <tr><td>Fine-tuning strategy</td><td>Block 1+2 frozen, BatchNorm in eval mode</td></tr>
     </table>
 

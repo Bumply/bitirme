@@ -21,9 +21,6 @@ calibration_data/*.npz
 Thumbs.db
 desktop.ini
 
-# Dev scripts
-generate_figures.py
-
 # Virtual environments
 .venv/
 venv/
@@ -35,3 +32,6 @@ env/
 # Local Arduino sketch backups (reorg leftovers)
 node3_motor_control_old/
 node3_motor_control_old1/
+
+# Throwaway checkpoints from generate_figures.py
+models/EEGNet_fig_*

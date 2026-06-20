@@ -41,8 +41,8 @@ A 3-node Brain-Computer Interface that reads motor imagery EEG, classifies it wi
 | Output | 4-class softmax (Forward, Left, Right, Stop) |
 | Quantization | int8 TFLite (Edge TPU compatible) |
 | Training set | BCI-IV-2a (8 subjects, motor imagery) |
-| Cross-subject accuracy | 43 % (4-class, chance = 25 %) — measured on BCI-IV-2a |
-| Personal calibration accuracy | Target 60 - 75 % (4-class) with proper electrode setup |
+| Cross-subject accuracy | 41.6 % held-out subject 9 · 34 % leave-one-subject-out mean (4-class, chance = 25 %) — measured on BCI-IV-2a |
+| Personal calibration accuracy | 57 % measured (subject 9, 42 %→57 % within-subject fine-tune); target 60 - 75 % with clean electrodes |
 | Personal fine-tuning strategy | Block 1 + 2 frozen, BatchNorm in eval mode, only Block 3 + classifier trained |
 
 ## Real-Time Performance
