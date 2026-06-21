@@ -413,9 +413,20 @@ void loop() {
         Serial.println("[BRAKE] pulse done");
     }
 
-    // ---- comms watchdog: total silence -> full stop backstop ----
+    // ---- comms watchdog: total silence -> ACTIVE stop ----
+    // Losing comms while moving is a fail-safe condition: snap throttle off,
+    // engage the brake, and latch like E-STOP so the chair holds until comms
+    // return and an S re-arms it. driveActive may already be false here (hold-
+    // to-drive coasts at 800 ms) but the chair can still be rolling at the 2 s
+    // watchdog, so we brake if we were driving recently. Idle = nothing to do.
     if (!eStop && (millis() - lastCmdMs > WATCHDOG_MS)) {
-        if (driveActive || steerActive) stopAll("comms lost");
-        lastCmdMs = millis();
+        bool wasMoving = driveActive || steerActive ||
+                         (millis() - lastDriveMs < WATCHDOG_MS + DRIVE_TIMEOUT_MS);
+        if (wasMoving) {
+            Serial.println("[WATCHDOG] comms lost while moving -- braking");
+            cmdEStop();              // throttle snap-off + brake engage + latch
+        } else {
+            lastCmdMs = millis();    // idle: just keep watching
+        }
     }
 }

@@ -103,9 +103,16 @@ ADS_START   = 0x08      # begin conversions (DRDY won't toggle without this)
 # into a fast, diagnosable failure (caller stops -> Node 2 watchdog stops chair).
 DRDY_TIMEOUT_S = 1.0
 
-# LED GPIO pins (Coral Dev Board Mini)
-LED_CAPTURE   = 28   # purple LED — on during capture
-LED_INFERENCE = 30   # blue LED — blinks on each inference
+# RGB user LED (Coral Dev Board Mini). Traced from the board netlist: the LED is
+# on gpiochip0 with a master-enable line that must be driven HIGH to power it.
+# The old gpiochip2 28/30 pins drove nothing, so the status LEDs never lit.
+# If a colour looks wrong, swap LED_R/G/B_LINE; flip LED_ACTIVE_HIGH for polarity.
+LED_CHIP        = "/dev/gpiochip0"
+LED_ENABLE_LINE = 39    # master enable (header pin 40) — HIGH powers the LED
+LED_R_LINE      = 22    # red
+LED_G_LINE      = 10    # green
+LED_B_LINE      = 9     # blue
+LED_ACTIVE_HIGH = True  # set False if the LED is wired active-low
 
 # Calibration listener port (receives cue commands from Node 2 dashboard)
 CAL_LISTEN_PORT = 5001
@@ -654,37 +661,65 @@ class CommandSender:
 # ==============================================================================
 
 class LEDController:
+    """Drives the Coral Dev Board Mini RGB user LED.
+
+    capture = purple (R+B) held on while capturing; inference = a quick blue
+    blink that restores the capture colour afterwards. Cosmetic only: any GPIO
+    error just disables the LEDs, it never crashes Node 1.
+    """
     def __init__(self):
         self.enabled = RUNNING_ON_CORAL
-        if self.enabled:
-            try:
-                from periphery import GPIO
-                self.capture_led   = GPIO("/dev/gpiochip2", LED_CAPTURE, "out")
-                self.inference_led = GPIO("/dev/gpiochip2", LED_INFERENCE, "out")
-            except Exception as e:
-                # Status LEDs are cosmetic — never let a missing/!wired GPIO
-                # chip (e.g. this board only exposes gpiochip0) crash Node 1.
-                print(f"[LED] Disabled (no usable GPIO for LEDs: {e})")
-                self.enabled = False
+        self.capturing = False
+        self.enable = self.r = self.g = self.b = None
+        if not self.enabled:
+            return
+        try:
+            from periphery import GPIO
+            self.enable = GPIO(LED_CHIP, LED_ENABLE_LINE, "out")
+            self.r = GPIO(LED_CHIP, LED_R_LINE, "out")
+            self.g = GPIO(LED_CHIP, LED_G_LINE, "out")
+            self.b = GPIO(LED_CHIP, LED_B_LINE, "out")
+            self.enable.write(True)          # power the LED block
+            self._set(False, False, False)   # start dark
+        except Exception as e:
+            # Cosmetic only — never let a missing/!wired GPIO crash Node 1.
+            print(f"[LED] Disabled (no usable GPIO for LEDs: {e})")
+            self.enabled = False
+
+    def _set(self, r, g, b):
+        if not self.enabled:
+            return
+        on, off = LED_ACTIVE_HIGH, not LED_ACTIVE_HIGH
+        self.r.write(on if r else off)
+        self.g.write(on if g else off)
+        self.b.write(on if b else off)
 
     def capture_on(self):
-        if self.enabled:
-            self.capture_led.write(True)
+        self.capturing = True
+        self._set(True, False, True)         # purple
 
     def capture_off(self):
-        if self.enabled:
-            self.capture_led.write(False)
+        self.capturing = False
+        self._set(False, False, False)
 
     def inference_blink(self):
-        if self.enabled:
-            self.inference_led.write(True)
-            time.sleep(0.05)
-            self.inference_led.write(False)
+        if not self.enabled:
+            return
+        self._set(False, False, True)        # blue flash
+        time.sleep(0.05)
+        if self.capturing:
+            self._set(True, False, True)     # restore purple
+        else:
+            self._set(False, False, False)
 
     def close(self):
-        if self.enabled:
-            self.capture_led.write(False)
-            self.inference_led.write(False)
+        if not self.enabled:
+            return
+        self._set(False, False, False)
+        try:
+            self.enable.write(False)         # power the LED block down
+        except Exception:
+            pass
 
 
 # ==============================================================================
