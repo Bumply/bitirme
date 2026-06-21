@@ -65,7 +65,9 @@ ADAPT_CONFIDENCE     = 0.80    # only pseudo-label when confidence > this
 ADAPT_BUFFER_SIZE    = 50      # micro fine-tune every N confident predictions
 ADAPT_MICRO_EPOCHS   = 5       # quick fine-tune epochs per batch
 ADAPT_LR             = 0.00005 # very low LR to avoid catastrophic forgetting
-ADAPT_ENABLED        = True    # toggle online adaptation
+ADAPT_ENABLED        = True    # PyTorch engine ONLY -- NO effect on the Coral's
+                               # TFLite/Edge-TPU path (frozen by design). On the
+                               # device, calibrate offline with node1_calibrate.py
 
 # WiFi UDP target — Node 2 (Raspberry Pi 5) connects to Coral's AP
 # Coral AP is typically 192.168.4.1, Pi gets 192.168.4.x
@@ -96,9 +98,22 @@ ADS_SDATAC  = 0x11
 ADS_RDATA   = 0x12
 ADS_START   = 0x08      # begin conversions (DRDY won't toggle without this)
 
-# LED GPIO pins (Coral Dev Board Mini)
-LED_CAPTURE   = 28   # purple LED — on during capture
-LED_INFERENCE = 30   # blue LED — blinks on each inference
+# DRDY poll timeout. At 250 SPS DRDY toggles every ~4 ms; 1 s of silence means
+# the front-end has genuinely stalled. A finite timeout turns an infinite hang
+# into a fast, diagnosable failure (caller stops -> Node 2 watchdog stops chair).
+DRDY_TIMEOUT_S = 1.0
+
+# Status LEDs on the PORTILOOP HAT (gpiochip0), traced from the Portiloop KiCad
+# netlist + portiloop-software/leds.py. The board has two indicators:
+#   D1 = green on the LEDCTL line (39)              -- works
+#   D2 = RGB (R=22, G=9, B=10) but on this unit only the RED channel (22) is
+#        populated; D2 green/blue are dead (confirmed on two boards).
+# So we drive only the two lines that physically light: D1 green (39) = solid
+# "running", D2 red (22) = per-inference heartbeat. Direct, active-high.
+# (The old gpiochip2 28/30 pins drove nothing, which is why LEDs never lit.)
+LED_CHIP       = "/dev/gpiochip0"
+LED_GREEN_LINE = 39    # D1 green — solid = capturing/running
+LED_RED_LINE   = 22    # D2 red   — blinked once per inference
 
 # Calibration listener port (receives cue commands from Node 2 dashboard)
 CAL_LISTEN_PORT = 5001
@@ -304,8 +319,13 @@ class ADS1299Reader:
         -------
         sample : np.ndarray, shape (8,), dtype float64 — microvolts
         """
-        # Wait for DRDY falling edge (tuple style)
-        self.drdy.poll(timeout=None)
+        # Wait for DRDY falling edge. Finite timeout so a stalled ADC (no
+        # conversions -> DRDY never toggles) fails fast instead of hanging here
+        # forever -- the original NeuroDrive bug class.
+        if not self.drdy.poll(timeout=DRDY_TIMEOUT_S):
+            raise RuntimeError(
+                f"ADS1299 DRDY timeout -- no data-ready in {DRDY_TIMEOUT_S:.1f}s "
+                "(ADC stalled? check START/RDATAC, SPI wiring, power)")
         self.drdy.read_event()
 
         # Read: 3 status bytes + N_CH channels * 3 bytes each
@@ -642,37 +662,55 @@ class CommandSender:
 # ==============================================================================
 
 class LEDController:
+    """Drives the two working Portiloop-hat status LEDs via gpiochip0.
+
+    D1 green (line 39) = solid while running; D2 red (line 22) = blinks once per
+    inference (a heartbeat). On this hardware D2's green/blue channels are dead,
+    so we drive only the two lines that physically light. Cosmetic only: any GPIO
+    error just disables the LEDs, it never crashes Node 1.
+    """
     def __init__(self):
         self.enabled = RUNNING_ON_CORAL
-        if self.enabled:
-            try:
-                from periphery import GPIO
-                self.capture_led   = GPIO("/dev/gpiochip2", LED_CAPTURE, "out")
-                self.inference_led = GPIO("/dev/gpiochip2", LED_INFERENCE, "out")
-            except Exception as e:
-                # Status LEDs are cosmetic — never let a missing/!wired GPIO
-                # chip (e.g. this board only exposes gpiochip0) crash Node 1.
-                print(f"[LED] Disabled (no usable GPIO for LEDs: {e})")
-                self.enabled = False
+        self.green = self.red = None
+        self._red_on = False
+        if not self.enabled:
+            return
+        try:
+            from periphery import GPIO
+            self.green = GPIO(LED_CHIP, LED_GREEN_LINE, "out")
+            self.red   = GPIO(LED_CHIP, LED_RED_LINE, "out")
+            self.green.write(False)
+            self.red.write(False)
+        except Exception as e:
+            # Cosmetic only — never let a missing/!wired GPIO crash Node 1.
+            print(f"[LED] Disabled (no usable GPIO for LEDs: {e})")
+            self.enabled = False
 
     def capture_on(self):
         if self.enabled:
-            self.capture_led.write(True)
+            self.green.write(True)           # solid green = running
 
     def capture_off(self):
         if self.enabled:
-            self.capture_led.write(False)
+            self.green.write(False)
+            self.red.write(False)
 
     def inference_blink(self):
-        if self.enabled:
-            self.inference_led.write(True)
-            time.sleep(0.05)
-            self.inference_led.write(False)
+        # Non-blocking red heartbeat: toggle D2 red each inference (no sleep, so
+        # it never adds latency to the control loop). Green stays solid.
+        if not self.enabled:
+            return
+        self._red_on = not self._red_on
+        self.red.write(self._red_on)
 
     def close(self):
-        if self.enabled:
-            self.capture_led.write(False)
-            self.inference_led.write(False)
+        if not self.enabled:
+            return
+        try:
+            self.green.write(False)
+            self.red.write(False)
+        except Exception:
+            pass
 
 
 # ==============================================================================
@@ -771,10 +809,12 @@ class OnlineAdapter:
         self.engine = engine
 
         if not self.enabled:
-            if ADAPT_ENABLED:
-                print("[ADAPT] Disabled -- online adaptation requires PyTorch engine")
+            if ADAPT_ENABLED and not hasattr(engine, 'model'):
+                print("[ADAPT] OFF -- online adaptation needs the PyTorch engine; "
+                      "the TFLite/Edge-TPU path (this Coral) is frozen by design. "
+                      "Calibrate offline with node1_calibrate.py instead.")
             else:
-                print("[ADAPT] Disabled by config")
+                print("[ADAPT] OFF (disabled by config)")
             return
 
         self.label_to_idx = {c: i for i, c in enumerate(CLASS_NAMES)}
