@@ -12,10 +12,11 @@ Host = CachyOS (Arch), cwd usually `/home/ali`. Repo at `~/NeuroDrive`.
 
 ## Repo / git state
 - GitHub: `github.com/Bumply/bitirme` (gh authenticated as Bumply). Pages from main `/docs`.
-- **Open PR #1**: branch `phase3-safety-fixes` → `main`. Two commits:
-  1. soft-start ramp + DRDY timeout + adaptation honesty
-  2. comms-loss brake + (first, WRONG) LED pin fix
-- ⚠️ **PR is behind the board**: the final LED rewrite (see below) is DEPLOYED on the Coral but **not yet committed**. Local `node1_coral.py` has the final version. Next session: commit the final `node1_coral.py` to `phase3-safety-fixes` to sync the PR.
+- **Open PR #1**: branch `phase3-safety-fixes` → `main`. Three commits:
+  1. `d879baa` soft-start ramp + DRDY timeout + adaptation honesty
+  2. `07f7db6` comms-loss brake + (first, WRONG) LED pin fix
+  3. `36d9bde` final LED rewrite + this HANDOFF.md
+- ✅ **PR is in sync with the board** (as of 2026-06-22): the final LED rewrite deployed on the Coral is committed (`36d9bde`) and pushed. Nothing local is behind origin.
 - Untracked: `hardware/*.scad` (wet-cup electrode holders), `led_probe.py` (throwaway), this `HANDOFF.md`.
 
 ## This session's work
@@ -49,7 +50,7 @@ Power-on flow already works:
 - Always filter SSH noise: `... 2>&1 | grep -ivE "post-quantum|store now|may need|openssh.com|vulnerable"`.
 
 ## Open items / next steps
-- [ ] Commit final `node1_coral.py` (LED rewrite) to `phase3-safety-fixes`; sync PR #1.
+- [x] ~~Commit final `node1_coral.py` (LED rewrite) to `phase3-safety-fixes`; sync PR #1.~~ DONE (`36d9bde`, pushed 2026-06-22).
 - [ ] Verify Node 2 (Pi) autostarts + listens on :5000 (last turnkey link).
 - [ ] Personal calibration (`node1_calibrate.py`) with electrodes on scalp for real classification (currently ~42% / stuck-S without it).
 - [ ] (Deferred) battery cutoff firmware once A0 divider wired; comms-loss brake already in PR.
