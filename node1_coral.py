@@ -103,16 +103,17 @@ ADS_START   = 0x08      # begin conversions (DRDY won't toggle without this)
 # into a fast, diagnosable failure (caller stops -> Node 2 watchdog stops chair).
 DRDY_TIMEOUT_S = 1.0
 
-# RGB user LED (Coral Dev Board Mini). Traced from the board netlist: the LED is
-# on gpiochip0 with a master-enable line that must be driven HIGH to power it.
-# The old gpiochip2 28/30 pins drove nothing, so the status LEDs never lit.
-# If a colour looks wrong, swap LED_R/G/B_LINE; flip LED_ACTIVE_HIGH for polarity.
-LED_CHIP        = "/dev/gpiochip0"
-LED_ENABLE_LINE = 39    # master enable (header pin 40) — HIGH powers the LED
-LED_R_LINE      = 22    # red
-LED_G_LINE      = 10    # green
-LED_B_LINE      = 9     # blue
-LED_ACTIVE_HIGH = True  # set False if the LED is wired active-low
+# Status LEDs on the PORTILOOP HAT (gpiochip0), traced from the Portiloop KiCad
+# netlist + portiloop-software/leds.py. The board has two indicators:
+#   D1 = green on the LEDCTL line (39)              -- works
+#   D2 = RGB (R=22, G=9, B=10) but on this unit only the RED channel (22) is
+#        populated; D2 green/blue are dead (confirmed on two boards).
+# So we drive only the two lines that physically light: D1 green (39) = solid
+# "running", D2 red (22) = per-inference heartbeat. Direct, active-high.
+# (The old gpiochip2 28/30 pins drove nothing, which is why LEDs never lit.)
+LED_CHIP       = "/dev/gpiochip0"
+LED_GREEN_LINE = 39    # D1 green — solid = capturing/running
+LED_RED_LINE   = 22    # D2 red   — blinked once per inference
 
 # Calibration listener port (receives cue commands from Node 2 dashboard)
 CAL_LISTEN_PORT = 5001
@@ -661,63 +662,53 @@ class CommandSender:
 # ==============================================================================
 
 class LEDController:
-    """Drives the Coral Dev Board Mini RGB user LED.
+    """Drives the two working Portiloop-hat status LEDs via gpiochip0.
 
-    capture = purple (R+B) held on while capturing; inference = a quick blue
-    blink that restores the capture colour afterwards. Cosmetic only: any GPIO
+    D1 green (line 39) = solid while running; D2 red (line 22) = blinks once per
+    inference (a heartbeat). On this hardware D2's green/blue channels are dead,
+    so we drive only the two lines that physically light. Cosmetic only: any GPIO
     error just disables the LEDs, it never crashes Node 1.
     """
     def __init__(self):
         self.enabled = RUNNING_ON_CORAL
-        self.capturing = False
-        self.enable = self.r = self.g = self.b = None
+        self.green = self.red = None
+        self._red_on = False
         if not self.enabled:
             return
         try:
             from periphery import GPIO
-            self.enable = GPIO(LED_CHIP, LED_ENABLE_LINE, "out")
-            self.r = GPIO(LED_CHIP, LED_R_LINE, "out")
-            self.g = GPIO(LED_CHIP, LED_G_LINE, "out")
-            self.b = GPIO(LED_CHIP, LED_B_LINE, "out")
-            self.enable.write(True)          # power the LED block
-            self._set(False, False, False)   # start dark
+            self.green = GPIO(LED_CHIP, LED_GREEN_LINE, "out")
+            self.red   = GPIO(LED_CHIP, LED_RED_LINE, "out")
+            self.green.write(False)
+            self.red.write(False)
         except Exception as e:
             # Cosmetic only — never let a missing/!wired GPIO crash Node 1.
             print(f"[LED] Disabled (no usable GPIO for LEDs: {e})")
             self.enabled = False
 
-    def _set(self, r, g, b):
-        if not self.enabled:
-            return
-        on, off = LED_ACTIVE_HIGH, not LED_ACTIVE_HIGH
-        self.r.write(on if r else off)
-        self.g.write(on if g else off)
-        self.b.write(on if b else off)
-
     def capture_on(self):
-        self.capturing = True
-        self._set(True, False, True)         # purple
+        if self.enabled:
+            self.green.write(True)           # solid green = running
 
     def capture_off(self):
-        self.capturing = False
-        self._set(False, False, False)
+        if self.enabled:
+            self.green.write(False)
+            self.red.write(False)
 
     def inference_blink(self):
+        # Non-blocking red heartbeat: toggle D2 red each inference (no sleep, so
+        # it never adds latency to the control loop). Green stays solid.
         if not self.enabled:
             return
-        self._set(False, False, True)        # blue flash
-        time.sleep(0.05)
-        if self.capturing:
-            self._set(True, False, True)     # restore purple
-        else:
-            self._set(False, False, False)
+        self._red_on = not self._red_on
+        self.red.write(self._red_on)
 
     def close(self):
         if not self.enabled:
             return
-        self._set(False, False, False)
         try:
-            self.enable.write(False)         # power the LED block down
+            self.green.write(False)
+            self.red.write(False)
         except Exception:
             pass
 
