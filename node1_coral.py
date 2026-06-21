@@ -65,7 +65,9 @@ ADAPT_CONFIDENCE     = 0.80    # only pseudo-label when confidence > this
 ADAPT_BUFFER_SIZE    = 50      # micro fine-tune every N confident predictions
 ADAPT_MICRO_EPOCHS   = 5       # quick fine-tune epochs per batch
 ADAPT_LR             = 0.00005 # very low LR to avoid catastrophic forgetting
-ADAPT_ENABLED        = True    # toggle online adaptation
+ADAPT_ENABLED        = True    # PyTorch engine ONLY -- NO effect on the Coral's
+                               # TFLite/Edge-TPU path (frozen by design). On the
+                               # device, calibrate offline with node1_calibrate.py
 
 # WiFi UDP target — Node 2 (Raspberry Pi 5) connects to Coral's AP
 # Coral AP is typically 192.168.4.1, Pi gets 192.168.4.x
@@ -95,6 +97,11 @@ ADS_RDATAC  = 0x10
 ADS_SDATAC  = 0x11
 ADS_RDATA   = 0x12
 ADS_START   = 0x08      # begin conversions (DRDY won't toggle without this)
+
+# DRDY poll timeout. At 250 SPS DRDY toggles every ~4 ms; 1 s of silence means
+# the front-end has genuinely stalled. A finite timeout turns an infinite hang
+# into a fast, diagnosable failure (caller stops -> Node 2 watchdog stops chair).
+DRDY_TIMEOUT_S = 1.0
 
 # LED GPIO pins (Coral Dev Board Mini)
 LED_CAPTURE   = 28   # purple LED — on during capture
@@ -304,8 +311,13 @@ class ADS1299Reader:
         -------
         sample : np.ndarray, shape (8,), dtype float64 — microvolts
         """
-        # Wait for DRDY falling edge (tuple style)
-        self.drdy.poll(timeout=None)
+        # Wait for DRDY falling edge. Finite timeout so a stalled ADC (no
+        # conversions -> DRDY never toggles) fails fast instead of hanging here
+        # forever -- the original NeuroDrive bug class.
+        if not self.drdy.poll(timeout=DRDY_TIMEOUT_S):
+            raise RuntimeError(
+                f"ADS1299 DRDY timeout -- no data-ready in {DRDY_TIMEOUT_S:.1f}s "
+                "(ADC stalled? check START/RDATAC, SPI wiring, power)")
         self.drdy.read_event()
 
         # Read: 3 status bytes + N_CH channels * 3 bytes each
@@ -771,10 +783,12 @@ class OnlineAdapter:
         self.engine = engine
 
         if not self.enabled:
-            if ADAPT_ENABLED:
-                print("[ADAPT] Disabled -- online adaptation requires PyTorch engine")
+            if ADAPT_ENABLED and not hasattr(engine, 'model'):
+                print("[ADAPT] OFF -- online adaptation needs the PyTorch engine; "
+                      "the TFLite/Edge-TPU path (this Coral) is frozen by design. "
+                      "Calibrate offline with node1_calibrate.py instead.")
             else:
-                print("[ADAPT] Disabled by config")
+                print("[ADAPT] OFF (disabled by config)")
             return
 
         self.label_to_idx = {c: i for i, c in enumerate(CLASS_NAMES)}

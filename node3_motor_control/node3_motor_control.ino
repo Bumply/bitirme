@@ -48,27 +48,62 @@ const int      HUB_STEPS    = 1;
 int  currentStep = 0;
 bool dac_found   = false;
 
+// Soft-start ramp: hubSetStep() sets a TARGET; rampTick() walks the live DAC
+// value toward it a little each tick so the chair eases in/out instead of
+// lurching to full throttle. E-STOP bypasses the ramp via hubKill() (snaps to
+// idle instantly). Restored from the earlier sketch -- the full_test rewrite
+// dropped the ramp, which made F = instant full throttle.
+uint16_t dacTarget          = THROTTLE_OFF;
+uint16_t dacCurrent         = THROTTLE_OFF;
+const uint16_t      RAMP_STEP = 20;   // DAC counts per ramp tick (~ accel rate)
+const unsigned long RAMP_MS   = 20;   // ramp tick interval
+unsigned long lastRampMs = 0;
+
+void dacWrite(uint16_t v) {
+    if (dac_found) dac.setVoltage(v, false);
+}
+
 uint16_t getStepValue(int step) {
     if (step <= 0) return DAC_MIN;
     if (step >= HUB_STEPS) return DAC_MAX;
     return DAC_MIN + (uint16_t)((DAC_MAX - DAC_MIN) * (step / (float)HUB_STEPS));
 }
 
+// Set the hub TARGET (ramped). step 0 = coast down to idle, step>=1 = drive.
 void hubSetStep(int step) {
     if (!dac_found) { Serial.println("[HUB] DAC not found, send 'i' to scan"); return; }
     if (step < 0)         step = 0;
     if (step > HUB_STEPS) step = HUB_STEPS;
     currentStep = step;
     if (step == 0) {
-        dac.setVoltage(THROTTLE_OFF, false);
-        Serial.println("[HUB] OFF");
+        dacTarget = THROTTLE_OFF;
+        Serial.println("[HUB] OFF (ramping down)");
     } else {
-        uint16_t v = getStepValue(step);
-        dac.setVoltage(v, false);
+        dacTarget = getStepValue(step);
         Serial.print("[HUB] step="); Serial.print(step);
         Serial.print("/"); Serial.print(HUB_STEPS);
-        Serial.print("  dac="); Serial.println(v);
+        Serial.print("  target="); Serial.println(dacTarget);
     }
+}
+
+// Emergency: snap the hub to idle NOW, bypassing the ramp (E-STOP path only).
+void hubKill() {
+    currentStep = 0;
+    dacTarget   = THROTTLE_OFF;
+    dacCurrent  = THROTTLE_OFF;
+    dacWrite(THROTTLE_OFF);
+}
+
+// Walk dacCurrent toward dacTarget by RAMP_STEP every RAMP_MS. Call each loop().
+void rampTick() {
+    if (millis() - lastRampMs < RAMP_MS) return;
+    lastRampMs = millis();
+    if (dacCurrent == dacTarget) return;
+    if (dacCurrent < dacTarget)
+        dacCurrent = min((uint16_t)(dacCurrent + RAMP_STEP), dacTarget);
+    else
+        dacCurrent = max((uint16_t)(dacCurrent - RAMP_STEP), dacTarget);
+    dacWrite(dacCurrent);
 }
 
 // =============================================================================
@@ -219,6 +254,7 @@ void cmdStop() {
 
 void cmdEStop() {
     stopAll("E-STOP");
+    hubKill();                                  // snap throttle to idle, no ramp
     if (brakePosition == 1) { brakeEngage(false); brakePosition = 0; }  // brake only here
     eStop = true;
     Serial.println("[E-STOP] latched -- send S to clear");
@@ -356,6 +392,9 @@ void loop() {
                 break;
         }
     }
+
+    // ---- soft-start: walk the hub DAC toward its target every tick ----
+    rampTick();
 
     // ---- hold-to-drive watchdog: cut hub if F stops arriving ----
     if (driveActive && (millis() - lastDriveMs > DRIVE_TIMEOUT_MS)) {
